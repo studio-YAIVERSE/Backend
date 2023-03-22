@@ -28,6 +28,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    # Rest Framework Apps and Extensions
+    'rest_framework',
+    'drf_yasg',
+    'django_extensions',
+    'corsheaders',
+
     # Django Extensions for social login - uncomment to use
     # 'django.contrib.sites',
     # 'allauth',
