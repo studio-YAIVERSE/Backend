@@ -1,4 +1,7 @@
 secret.json
+weights/
+
+GET3D/
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,django,node,vuejs,intellij+all,windows,linux,macos
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,django,node,vuejs,intellij+all,windows,linux,macos

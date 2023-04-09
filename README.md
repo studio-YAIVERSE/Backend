@@ -1,22 +1,37 @@
-# 1주차 Backend TODO
+# 3주차 Backend TODO
 
-- [X] 환경 설정 및 REPO 만들기
-- [ ] DB 구현
-- [ ] VIEW 구현
-- [ ] schema
+- [ ] Finalize Warm-Up
+  - Fun `studio_YAIVERSE.main.apps._warm_up`
+- [ ] Pretrained Weight Retrieve & Register in Settings
+  - Val `studio_YAIVERSE.config.settings.base.TORCH_WEIGHT_PATH`
+- [ ] Test & Modification of Inference View (in GPU Server)
+  - Fun `studio_YAIVERSE.main.views.inference.inference`
+- [ ] Modification of Object3D RUD View
+  - Cls `studio_YAIVERSE.main.views.object_3d.Object3DModelViewSet`
+  - Cls `studio_YAIVERSE.main.views.object_3d.get_object_3d_list`
+- [ ] Implement Text to Model View (have to change `MODEL_OPS`)
+  - Val `studio_YAIVERSE.config.settings.MODEL_OPTS`
+  - Fun `studio_YAIVERSE.main.views.inference.inference`
+
+
+# 1-2주차 Backend TODO
+
+- [X] REPO Creation & Base Settings
+- [X] base DB
+- [X] base VIEW
+- [X] schema
 
 ## DB
 
 - User Table
     
-    
 | userid   | identifier | USER 고유 번호                            |
 |----------|------------|---------------------------------------|
 | username | string     | ID 개념                                 |
 | password | string     | hash value of user password (아직은 명목상) |
+
 - 3D Object Table
-    
-    
+
 | object_id            | identifier | OBJECT 고유 번호       |
 |----------------------|------------|--------------------|
 | object_name          | string     | OBJECT 이름          |
@@ -43,4 +58,4 @@
 
 ## **Schema**
 
-https://api.partyone.kr/schema/swagger-ui
+`127.0.0.1:8000/`
