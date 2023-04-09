@@ -10,10 +10,51 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 
-from pathlib import Path as _  # noqa
+from pathlib import Path as _Path
+from .init import init_all
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = _(__file__).resolve().parent.parent.parent
+BASE_DIR = _Path(__file__).resolve().parent.parent.parent.parent
+del _Path
+
+
+# Python Ops
+EXTRA_IMPORT_PATH = [
+    BASE_DIR / 'GET3D',
+]
+
+
+# Pytorch Ops
+TORCH_ENABLED = False
+
+TORCH_DEVICE = "cuda:3"
+
+TORCH_SEED = 0
+
+TORCH_RESOLUTION = 1024  # Image Resolution
+
+TORCH_WEIGHT_PATH: str = ""  # exec("raise NotImplementedError")  # TODO
+
+MODEL_OPTS = {  # Compatible with script arguments
+    'latent_dim': 512,
+    'one_3d_generator': True,
+    'deformation_multiplier': 1.,
+    'use_style_mixing': True,
+    'dmtet_scale': 1.,  # TODO
+    'feat_channel': 16,
+    'mlp_latent_channel': 32,
+    'tri_plane_resolution': 256,
+    'n_views': 1,
+    'render_type': 'neural_render',  # or 'spherical_gaussian'
+    'use_tri_plane': True,
+    'tet_res': 90,
+    'geometry_type': 'conv3d',
+    'data_camera_mode': 'shapenet_car',  # TODO
+    'n_implicit_layer': 1,
+    'cbase': 32768,
+    'cmax': 512,
+    'fp32': False
+}
 
 
 # Application definition
@@ -43,13 +84,8 @@ INSTALLED_APPS = [
     # 'widget_tweaks',
 
     # User-Apps
-    # 'accounts',
-    # 'board.apps.BoardConfig',
-    # 'index',
-    # 'main.apps.MainConfig',
-    # 'manager.apps.ManagerConfig',
-    # 'science.apps.ScienceConfig',
-    # 'tools',
+    'studio_YAIVERSE.accounts',
+    'studio_YAIVERSE.main.apps.MainConfig',
 
 ]
 
@@ -63,12 +99,12 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'config.urls'
+ROOT_URLCONF = 'studio_YAIVERSE.config.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates"],
+        'DIRS': [BASE_DIR / "studio_YAIVERSE/templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -81,7 +117,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'config.wsgi.application'
+WSGI_APPLICATION = 'studio_YAIVERSE.config.wsgi.application'
 
 
 # Password validation
@@ -122,7 +158,13 @@ USE_TZ = False
 
 STATIC_URL = '/static/'
 
-STATICFILES_DIRS = [BASE_DIR / 'static']
+STATICFILES_DIRS = [BASE_DIR / 'studio_YAIVERSE/static']
+
+MEDIA_URL = '/media/'
+
+MEDIA_ROOT = BASE_DIR / 'attachment'
+
+FILE_UPLOAD_MAX_MEMORY_SIZE = 128 << 20  # 100 MB
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
@@ -145,3 +187,8 @@ AUTHENTICATION_BACKENDS = [
 
 
 # User-App Required Settings
+
+
+# Initialization
+init_all(**globals())
+del init_all
