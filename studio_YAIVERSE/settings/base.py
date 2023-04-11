@@ -10,11 +10,11 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 
-from pathlib import Path as _Path
+import os as _os
+import pathlib as _pathlib
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = _Path(__file__).resolve().parent.parent.parent
-del _Path
+BASE_DIR = _pathlib.Path(__file__).resolve().parent.parent.parent
 
 
 # Python Ops
@@ -24,7 +24,9 @@ EXTRA_PYTHON_PATH = [
 
 
 # Pytorch Ops
-TORCH_ENABLED = True
+TORCH_ENABLED = bool(int(_os.getenv("TORCH_ENABLED", 1)))
+
+TORCH_WARM_UP_ITER = int(_os.getenv("TORCH_WARM_UP_ITER", 20))
 
 TORCH_DEVICE = "cuda:0"
 
@@ -186,3 +188,7 @@ AUTHENTICATION_BACKENDS = [
 
 
 # User-App Required Settings
+
+
+# Remove modules used
+del _os, _pathlib

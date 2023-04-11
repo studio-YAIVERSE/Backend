@@ -1,7 +1,8 @@
 def main():
     from django.core.management import execute_from_command_line
-    import os
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'studio_YAIVERSE.settings')
+    from .utils.django import configure_settings
+    from . import settings
+    configure_settings(settings)
     execute_from_command_line()
 
 

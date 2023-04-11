@@ -21,4 +21,4 @@ curl -sc ./cookie.txt "https://drive.google.com/uc?export=download&id=${FILEID}"
 curl -Lb ./cookie.txt "https://drive.google.com/uc?export=download&confirm=`awk '/_warning_/ {print $NF}' ./cookie.txt`&id=${FILEID}" -o ${FILENAME}
 rm cookie.txt
 
-DJANGO_SETTINGS_MODULE=studio_YAIVERSE.settings python3 -m django migrate
+python3 -m studio_YAIVERSE migrate

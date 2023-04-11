@@ -19,7 +19,7 @@ def get_device():
     if not settings.TORCH_ENABLED:
         return
     import torch
-    return torch.device(settings.DEVICE)
+    return torch.device(settings.TORCH_DEVICE)
 
 
 @lru_cache(maxsize=None)
@@ -94,8 +94,13 @@ def construct_all():
     # G_ema.load_state_dict(model_state_dict['G_ema'], strict=True)
     generator_ema.load_state_dict(model_state_dict['G_ema'], strict=True)
 
-    print("Warming up model...")
-    # TODO
+    total = settings.TORCH_WARM_UP_ITER
+    geo_z = torch.randn([1, generator_ema.z_dim], device=device)
+    tex_z = torch.randn([1, generator_ema.z_dim], device=device)
+    for i in range(1, total + 1):
+        print("Warming up... ({i}/{total})".format(i=i, total=total))
+        generator_ema.update_w_avg(None)
+        generator_ema.generate_3d_mesh(geo_z=geo_z, tex_z=tex_z, c=None, truncation_psi=0.7)
 
     print("Successfully loaded model.")
     G_EMA = generator_ema

@@ -7,7 +7,7 @@ python3 -m studio_YAIVERSE runserver --noreload
 
 # 3주차 Backend TODO
 
-- [ ] Finalize Warm-Up
+- [X] Finalize Warm-Up
   - Fun `studio_YAIVERSE.main.apps._warm_up`
 - [X] Pretrained Weight Retrieve & Register in Settings
 - [ ] Test & Modification of Inference View (in GPU Server)
