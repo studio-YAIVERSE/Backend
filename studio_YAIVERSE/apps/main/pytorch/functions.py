@@ -6,10 +6,10 @@ from training.inference_utils import (
     save_textured_mesh_for_inference, save_geo_for_inference
 )
 
-from .models import get_generator_ema, get_device
+from .nn import get_generator_ema, get_device
 
 
-@torch.inference_mode(True)
+@torch.inference_mode()
 def inference(
         run_dir='.',  # Output directory.
         inference_to_generate_textured_mesh=False,

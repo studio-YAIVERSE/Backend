@@ -1,7 +1,27 @@
 from django.db import models
 from django.contrib.auth.models import User
-from .base import BaseModel
-from ..common import file_upload_path
+from .common import file_upload_path
+
+
+class BaseModel(models.Model):
+    class Meta:
+        abstract = True
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        blank=True,
+        null=False,
+        verbose_name="생성 일시",
+        help_text="데이터가 생성된 날짜입니다."
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        blank=True,
+        null=False,
+        verbose_name="수정 일시",
+        help_text="데이터가 수정된 날짜입니다."
+    )
 
 
 class Object3D(BaseModel):
@@ -10,7 +30,6 @@ class Object3D(BaseModel):
     )
     name = models.CharField(
         max_length=32,
-        unique=True,
         verbose_name="3D Object 이름",
         help_text="3D Object 이름 입니다."
     )
@@ -37,9 +56,12 @@ class Object3D(BaseModel):
         verbose_name = '3D 오브젝트'
         verbose_name_plural = '3D 오브젝트들'
         ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(fields=["user", "name"], name='user-name constraint')
+        ]
 
     def __str__(self):
-        return f"Todo-{self.user.username}-{self.created_at}"
+        return f"Object3D-{self.user.username}-{self.name}"
 
 
 __all__ = ['Object3D']

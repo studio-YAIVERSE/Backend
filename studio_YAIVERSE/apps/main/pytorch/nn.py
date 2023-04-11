@@ -2,10 +2,11 @@ from functools import lru_cache
 
 from django.conf import settings
 
-from ...utils import at_working_directory
+from studio_YAIVERSE.utils import at_working_directory
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
+    from .setup import __setup_path; __setup_path(); del __setup_path  # NOQA
     from typing import Optional
     from training.networks_get3d import GeneratorDMTETMesh
 

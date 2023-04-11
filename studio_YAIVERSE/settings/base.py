@@ -13,18 +13,18 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 from pathlib import Path as _Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = _Path(__file__).resolve().parent.parent.parent.parent
+BASE_DIR = _Path(__file__).resolve().parent.parent.parent
 del _Path
 
 
 # Python Ops
-EXTRA_IMPORT_PATH = [
+EXTRA_PYTHON_PATH = [
     BASE_DIR / 'GET3D',
 ]
 
 
 # Pytorch Ops
-TORCH_ENABLED = True
+TORCH_ENABLED = 0
 
 TORCH_DEVICE = "cuda:0"
 
@@ -83,8 +83,8 @@ INSTALLED_APPS = [
     # 'widget_tweaks',
 
     # User-Apps
-    'studio_YAIVERSE.accounts',
-    'studio_YAIVERSE.main.apps.MainConfig',
+    'studio_YAIVERSE.apps.accounts',
+    'studio_YAIVERSE.apps.main',
 
 ]
 
@@ -98,12 +98,12 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'studio_YAIVERSE.config.urls'
+ROOT_URLCONF = 'studio_YAIVERSE.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "studio_YAIVERSE/templates"],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -116,7 +116,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'studio_YAIVERSE.config.wsgi.application'
+WSGI_APPLICATION = 'studio_YAIVERSE.wsgi.application'
 
 
 # Password validation
@@ -157,7 +157,7 @@ USE_TZ = False
 
 STATIC_URL = '/static/'
 
-STATICFILES_DIRS = [BASE_DIR / 'studio_YAIVERSE/static']
+# STATICFILES_DIRS = [BASE_DIR / 'studio_YAIVERSE/static']
 
 MEDIA_URL = '/media/'
 

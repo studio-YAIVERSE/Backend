@@ -1,3 +1,10 @@
+# Run Server
+
+```bash
+python3 -m studio_YAIVERSE runserver --noreload
+```
+
+
 # 3주차 Backend TODO
 
 - [ ] Finalize Warm-Up

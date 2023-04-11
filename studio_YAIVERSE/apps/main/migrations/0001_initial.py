@@ -3,7 +3,7 @@
 from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion
-from studio_YAIVERSE.main import common
+from studio_YAIVERSE.apps.main import common
 
 
 class Migration(migrations.Migration):

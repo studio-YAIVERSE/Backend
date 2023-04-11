@@ -7,7 +7,7 @@ __initialized = False
 def __setup_path():
     import sys
     import os.path
-    for path in settings.EXTRA_IMPORT_PATH:
+    for path in settings.EXTRA_PYTHON_PATH:
         if os.path.isdir(path):
             if str(path) not in sys.path:
                 sys.path.append(str(path))
