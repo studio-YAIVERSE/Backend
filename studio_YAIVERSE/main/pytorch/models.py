@@ -41,6 +41,10 @@ def construct_all():
 
     print("Initializing Model for Inference...")
 
+    import os
+    prev = os.getcwd()
+    os.chdir(settings.BASE_DIR / "GET3D")
+
     G = GeneratorDMTETMesh(
         c_dim=0,
         img_resolution=settings.TORCH_RESOLUTION,
@@ -83,5 +87,7 @@ def construct_all():
     # TODO
 
     print("Successfully loaded model.")
+
+    os.chdir(prev)
 
     G_EMA = generator_ema

@@ -24,9 +24,9 @@ EXTRA_IMPORT_PATH = [
 
 
 # Pytorch Ops
-TORCH_ENABLED = False
+TORCH_ENABLED = True
 
-TORCH_DEVICE = "cuda:3"
+TORCH_DEVICE = "cuda:0"
 
 TORCH_SEED = 0
 
