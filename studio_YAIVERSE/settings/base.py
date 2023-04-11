@@ -24,7 +24,7 @@ EXTRA_PYTHON_PATH = [
 
 
 # Pytorch Ops
-TORCH_ENABLED = 0
+TORCH_ENABLED = True
 
 TORCH_DEVICE = "cuda:0"
 
