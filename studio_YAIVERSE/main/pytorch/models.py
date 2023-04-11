@@ -1,5 +1,9 @@
+from functools import lru_cache
+
 from django.conf import settings
+
 from ...utils import at_working_directory
+
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Optional
@@ -9,6 +13,15 @@ if TYPE_CHECKING:
 G_EMA: "Optional[GeneratorDMTETMesh]" = None
 
 
+@lru_cache(maxsize=None)
+def get_device():
+    if not settings.TORCH_ENABLED:
+        return
+    import torch
+    return torch.device(settings.DEVICE)
+
+
+@lru_cache(maxsize=None)
 def get_generator_ema() -> "GeneratorDMTETMesh":
     assert G_EMA is not None
     return G_EMA

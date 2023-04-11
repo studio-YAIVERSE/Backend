@@ -2,8 +2,7 @@
 
 - [ ] Finalize Warm-Up
   - Fun `studio_YAIVERSE.main.apps._warm_up`
-- [ ] Pretrained Weight Retrieve & Register in Settings
-  - Val `studio_YAIVERSE.config.settings.base.TORCH_WEIGHT_PATH`
+- [X] Pretrained Weight Retrieve & Register in Settings
 - [ ] Test & Modification of Inference View (in GPU Server)
   - Fun `studio_YAIVERSE.main.views.inference.inference`
 - [ ] Modification of Object3D RUD View
