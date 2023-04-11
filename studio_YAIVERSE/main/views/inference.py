@@ -8,7 +8,8 @@ from training.inference_utils import (
 
 from django.conf import settings
 from rest_framework.exceptions import PermissionDenied
-from ..apps import MainConfig
+
+from ..pytorch import get_generator_ema
 
 
 @torch.inference_mode(True)
@@ -22,7 +23,7 @@ def inference(
         raise PermissionDenied("Server started without pytorch initialization.")
 
     device = torch.device(settings.DEVICE)
-    G_ema = MainConfig.G_ema
+    G_ema = get_generator_ema()
 
     grid_size = (5, 5)
     n_shape = grid_size[0] * grid_size[1]

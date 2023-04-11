@@ -11,7 +11,6 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 
 from pathlib import Path as _Path
-from .init import init_all
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = _Path(__file__).resolve().parent.parent.parent.parent
@@ -33,7 +32,7 @@ TORCH_SEED = 0
 
 TORCH_RESOLUTION = 1024  # Image Resolution
 
-TORCH_WEIGHT_PATH: str = ""  # exec("raise NotImplementedError")  # TODO
+TORCH_WEIGHT_PATH = BASE_DIR / "weights/shapenet_car.pt"  # TODO
 
 MODEL_OPTS = {  # Compatible with script arguments
     'latent_dim': 512,
@@ -187,8 +186,3 @@ AUTHENTICATION_BACKENDS = [
 
 
 # User-App Required Settings
-
-
-# Initialization
-init_all(**globals())
-del init_all
