@@ -12,7 +12,7 @@ python3 -m studio_YAIVERSE runserver --noreload
 - [X] Pretrained Weight Retrieve & Register in Settings
 - [ ] Test & Modification of Inference View (in GPU Server)
   - Fun `studio_YAIVERSE.main.views.inference.inference`
-- [ ] Modification of Object3D RUD View
+- [X] Modification of Object3D RUD View
   - Cls `studio_YAIVERSE.main.views.object_3d.Object3DModelViewSet`
   - Cls `studio_YAIVERSE.main.views.object_3d.get_object_3d_list`
 - [ ] Implement Text to Model View (have to change `MODEL_OPS`)

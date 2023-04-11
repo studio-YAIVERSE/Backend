@@ -26,7 +26,7 @@ EXTRA_PYTHON_PATH = [
 # Pytorch Ops
 TORCH_ENABLED = bool(int(_os.getenv("TORCH_ENABLED", 1)))
 
-TORCH_WARM_UP_ITER = int(_os.getenv("TORCH_WARM_UP_ITER", 20))
+TORCH_WARM_UP_ITER = int(_os.getenv("TORCH_WARM_UP_ITER", 10))
 
 TORCH_DEVICE = "cuda:0"
 
