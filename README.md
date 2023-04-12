@@ -1,12 +1,18 @@
+# Run Server
+
+```bash
+python3 -m studio_YAIVERSE runserver --noreload
+```
+
+
 # 3주차 Backend TODO
 
-- [ ] Finalize Warm-Up
+- [X] Finalize Warm-Up
   - Fun `studio_YAIVERSE.main.apps._warm_up`
-- [ ] Pretrained Weight Retrieve & Register in Settings
-  - Val `studio_YAIVERSE.config.settings.base.TORCH_WEIGHT_PATH`
-- [ ] Test & Modification of Inference View (in GPU Server)
+- [X] Pretrained Weight Retrieve & Register in Settings
+- [X] Test & Modification of Inference View (in GPU Server)
   - Fun `studio_YAIVERSE.main.views.inference.inference`
-- [ ] Modification of Object3D RUD View
+- [X] Modification of Object3D RUD View
   - Cls `studio_YAIVERSE.main.views.object_3d.Object3DModelViewSet`
   - Cls `studio_YAIVERSE.main.views.object_3d.get_object_3d_list`
 - [ ] Implement Text to Model View (have to change `MODEL_OPS`)

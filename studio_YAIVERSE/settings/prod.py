@@ -54,6 +54,13 @@ ALLOWED_HOSTS: list  # type: list[str]
 DATABASES: dict  # type: dict[str, dict[str, str]]
 
 
+# cors
+
+CORS_ALLOW_ALL_ORIGINS = True
+
+CORS_ALLOW_CREDENTIALS = True
+
+
 # Session Settings
 
 SESSION_COOKIE_AGE = 86400  # default is 1209600 (two weeks)

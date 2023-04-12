@@ -1,4 +1,6 @@
 secret.json
+weights/
+
 GET3D/
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,django,node,vuejs,intellij+all,windows,linux,macos
@@ -12,7 +14,7 @@ __pycache__/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
-media
+attachment
 
 # If your build process includes running collectstatic, then you probably don't need or want to include staticfiles/
 # in your Git repository. Update and uncomment the following line accordingly.

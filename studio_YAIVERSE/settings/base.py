@@ -10,30 +10,31 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 
-from pathlib import Path as _Path
-from .init import init_all
+import os as _os
+import pathlib as _pathlib
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = _Path(__file__).resolve().parent.parent.parent.parent
-del _Path
+BASE_DIR = _pathlib.Path(__file__).resolve().parent.parent.parent
 
 
 # Python Ops
-EXTRA_IMPORT_PATH = [
+EXTRA_PYTHON_PATH = [
     BASE_DIR / 'GET3D',
 ]
 
 
 # Pytorch Ops
-TORCH_ENABLED = False
+TORCH_ENABLED = bool(int(_os.getenv("TORCH_ENABLED", 1)))
 
-TORCH_DEVICE = "cuda:3"
+TORCH_WARM_UP_ITER = int(_os.getenv("TORCH_WARM_UP_ITER", 10))
+
+TORCH_DEVICE = "cuda:0"
 
 TORCH_SEED = 0
 
 TORCH_RESOLUTION = 1024  # Image Resolution
 
-TORCH_WEIGHT_PATH: str = ""  # exec("raise NotImplementedError")  # TODO
+TORCH_WEIGHT_PATH = BASE_DIR / "weights/shapenet_car.pt"  # TODO
 
 MODEL_OPTS = {  # Compatible with script arguments
     'latent_dim': 512,
@@ -84,8 +85,8 @@ INSTALLED_APPS = [
     # 'widget_tweaks',
 
     # User-Apps
-    'studio_YAIVERSE.accounts',
-    'studio_YAIVERSE.main.apps.MainConfig',
+    'studio_YAIVERSE.apps.accounts',
+    'studio_YAIVERSE.apps.main',
 
 ]
 
@@ -99,12 +100,12 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'studio_YAIVERSE.config.urls'
+ROOT_URLCONF = 'studio_YAIVERSE.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "studio_YAIVERSE/templates"],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -117,7 +118,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'studio_YAIVERSE.config.wsgi.application'
+WSGI_APPLICATION = 'studio_YAIVERSE.wsgi.application'
 
 
 # Password validation
@@ -158,7 +159,7 @@ USE_TZ = False
 
 STATIC_URL = '/static/'
 
-STATICFILES_DIRS = [BASE_DIR / 'studio_YAIVERSE/static']
+# STATICFILES_DIRS = [BASE_DIR / 'studio_YAIVERSE/static']
 
 MEDIA_URL = '/media/'
 
@@ -189,6 +190,5 @@ AUTHENTICATION_BACKENDS = [
 # User-App Required Settings
 
 
-# Initialization
-init_all(**globals())
-del init_all
+# Remove modules used
+del _os, _pathlib
