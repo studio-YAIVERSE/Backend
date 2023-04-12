@@ -57,7 +57,7 @@ def postprocess_texture_map(array):
 
 
 @torch.inference_mode()
-def inference(name, text):
+def inference(name, text=None):
 
     print("Running inference(name={name!r}, text={text!r})".format(name=name, text=text))
 
