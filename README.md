@@ -5,25 +5,26 @@ python3 -m studio_YAIVERSE runserver --noreload
 ```
 
 
-# 3주차 Backend TODO
+# 4주차 Backend TODO
 
-- [X] Finalize Warm-Up
-  - Fun `studio_YAIVERSE.main.apps._warm_up`
-- [X] Pretrained Weight Retrieve & Register in Settings
-- [X] Test & Modification of Inference View (in GPU Server)
-  - Fun `studio_YAIVERSE.main.views.inference.inference`
-- [X] Modification of Object3D RUD View
-  - Cls `studio_YAIVERSE.main.views.object_3d.Object3DModelViewSet`
-  - Cls `studio_YAIVERSE.main.views.object_3d.get_object_3d_list`
 - [ ] Implement Text to Model View (have to change `MODEL_OPS`)
   - Val `studio_YAIVERSE.config.settings.MODEL_OPTS`
   - Fun `studio_YAIVERSE.main.views.inference.inference`
+- [ ] Thumbnail Generation
+
+
+# 3주차 Backend TODO
+
+- [X] Finalize Warm-Up
+- [X] Pretrained Weight Retrieve & Register in Settings
+- [X] Test & Modification of Inference View (in GPU Server)
+- [X] Modification of Object3D RUD View
 
 
 # 1-2주차 Backend TODO
 
 - [X] REPO Creation & Base Settings
-- [X] base DB
+- [X] base DB가
 - [X] base VIEW
 - [X] schema
 
