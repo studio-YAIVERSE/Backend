@@ -41,13 +41,13 @@ class Object3D(BaseModel):
     )
     file = models.FileField(
         upload_to=file_upload_path,
-        null=True,
+        blank=True,
         verbose_name="3D Object 파일",
         help_text="3D Object 파일 입니다.",
     )
     thumbnail = models.ImageField(
         upload_to=file_upload_path,
-        null=True,
+        blank=True,
         verbose_name="3D Object 썸네일",
         help_text="3D Object 썸네일 입니다.",
     )

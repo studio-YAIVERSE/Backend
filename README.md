@@ -10,7 +10,7 @@ python3 -m studio_YAIVERSE runserver --noreload
 - [X] Finalize Warm-Up
   - Fun `studio_YAIVERSE.main.apps._warm_up`
 - [X] Pretrained Weight Retrieve & Register in Settings
-- [ ] Test & Modification of Inference View (in GPU Server)
+- [X] Test & Modification of Inference View (in GPU Server)
   - Fun `studio_YAIVERSE.main.views.inference.inference`
 - [X] Modification of Object3D RUD View
   - Cls `studio_YAIVERSE.main.views.object_3d.Object3DModelViewSet`

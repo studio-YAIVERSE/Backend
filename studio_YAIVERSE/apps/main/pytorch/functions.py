@@ -1,4 +1,7 @@
+import os
 import io
+import tempfile
+import zipfile
 import PIL.Image
 import numpy as np
 import cv2
@@ -54,10 +57,9 @@ def postprocess_texture_map(array):
 
 
 @torch.inference_mode()
-def inference(filename):
-    # from rest_framework.exceptions import PermissionDenied
-    # if not settings.TORCH_ENABLED:
-    #     raise PermissionDenied("Server started without pytorch initialization.")
+def inference(name):
+
+    print("Running Inference:", name)
 
     device = get_device()
     G_ema = get_generator_ema()
@@ -79,14 +81,27 @@ def inference(filename):
         all_uvs.data.cpu().numpy(),
         mesh_f.data.cpu().numpy(),
         all_mesh_tex_idx.data.cpu().numpy(),
-        filename
+        name
     )
-    material = format_material(filename)
+    material = format_material(name)
     texture_map = postprocess_texture_map(tex_map)
 
-    with open(filename + '.obj', 'w') as fp:
-        fp.write(mesh_obj)
-    with open(filename + '.mtl', 'w') as fp:
-        fp.write(material)
-    with open(filename + '.png', 'wb') as fp:
-        texture_map.save(fp)
+    with tempfile.TemporaryDirectory() as tempdir:
+
+        mesh_obj_name = os.path.join(tempdir, name + '.obj')
+        with open(mesh_obj_name, 'w') as fp:
+            fp.write(mesh_obj)
+        material_name = os.path.join(tempdir, name + '.mtl')
+        with open(material_name, 'w') as fp:
+            fp.write(material)
+        text_map_name = os.path.join(tempdir, name + '.png')
+        with open(text_map_name, 'wb') as fp:
+            texture_map.save(fp)
+
+        bundle_fp = io.BytesIO()
+        bundle = zipfile.ZipFile(bundle_fp, "w")
+        bundle.write(mesh_obj_name, arcname=name + '.obj', compress_type=zipfile.ZIP_DEFLATED)
+        bundle.write(material_name, arcname=name + '.mtl', compress_type=zipfile.ZIP_DEFLATED)
+        bundle.write(text_map_name, arcname=name + '.png', compress_type=zipfile.ZIP_DEFLATED)
+
+    return bundle_fp

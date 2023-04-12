@@ -12,4 +12,9 @@ urlpatterns = [
         v.Object3DModelViewSet.as_view({'get': 'list'}),
         name="object_3d_list"
     ),
+    path(
+        "create/<str:username>/",
+        v.Object3DModelViewSet.as_view({'post': 'create'}),
+        name="object_3d_create"
+    ),
 ]

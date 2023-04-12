@@ -8,9 +8,7 @@ def typename(instance):
 
 
 def file_upload_path(instance, filename):
-    ext = filename.split('.')[-1]
     d = datetime.datetime.now()
-    filepath = d.strftime("%Y/%m/%d")
-    suffix = d.strftime("%Y%m%d%H%M%S")
-    filename = "%s_%s.%s" % (uuid.uuid4().hex, suffix, ext)
-    return os.path.join(typename(instance), filepath, filename)
+    file_base_path = d.strftime("%Y-%m-%d")
+    file_entry_path = "%s_%s" % (uuid.uuid4().hex, d.strftime("%Y%m%d%H%M%S"))
+    return os.path.join(typename(instance), file_base_path, file_entry_path, filename)
