@@ -28,13 +28,9 @@ TORCH_ENABLED = bool(int(_os.getenv("TORCH_ENABLED", 1)))
 
 TORCH_WARM_UP_ITER = int(_os.getenv("TORCH_WARM_UP_ITER", 10))
 
-TORCH_DEVICE = "cuda:0"
+TORCH_DEVICE = _os.getenv("TORCH_DEVICE", "cuda:0")
 
-TORCH_SEED = 0
-
-TORCH_RESOLUTION = 1024  # Image Resolution
-
-TORCH_WEIGHT_PATH = BASE_DIR / "weights/shapenet_car.pt"  # TODO
+TORCH_WEIGHT_PATH = _os.getenv("TORCH_WEIGHT_PATH", BASE_DIR / "weights/shapenet_car.pt")  # TODO
 
 MODEL_OPTS = {  # Compatible with script arguments
     'latent_dim': 512,
@@ -56,6 +52,10 @@ MODEL_OPTS = {  # Compatible with script arguments
     'cmax': 512,
     'fp32': False
 }
+
+TORCH_SEED = 0
+
+TORCH_RESOLUTION = 1024  # Image Resolution
 
 
 # Application definition
