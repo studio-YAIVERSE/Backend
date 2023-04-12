@@ -50,16 +50,16 @@ def postprocess_texture_map(array):
     mask = np.sum(img.astype(float), axis=-1, keepdims=True)
     mask = (mask <= 3.0).astype(float)
     kernel = np.ones((3, 3), 'uint8')
-    dilate_img = cv2.dilate(img, kernel, iterations=1)
+    dilate_img = cv2.dilate(img, kernel, iterations=1)  # NOQA
     img = img * (1 - mask) + dilate_img * mask
     img = img.clip(0, 255).astype(np.uint8)
     return PIL.Image.fromarray(np.ascontiguousarray(img[::-1, :, :]), 'RGB')
 
 
 @torch.inference_mode()
-def inference(name):
+def inference(name, text):
 
-    print("Running Inference:", name)
+    print("Running inference(name={name!r}, text={text!r})".format(name=name, text=text))
 
     device = get_device()
     G_ema = get_generator_ema()

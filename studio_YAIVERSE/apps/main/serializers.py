@@ -10,17 +10,13 @@ class Object3DSerializer(serializers.ModelSerializer):
         fields = ['name', 'description', 'file', 'thumbnail']
 
 
-class Object3DCreation(serializers.Serializer):
+class Object3DCreation(serializers.Serializer):  # NOQA
 
     name = serializers.CharField(max_length=32, required=True, help_text="3D Object 이름")
     description = serializers.CharField(max_length=256, allow_blank=True, help_text="3D Object 설명")
     text = serializers.CharField(help_text="3D Object 생성 prompt")
 
-    def create(self, validated_data):
-        raise NotImplementedError
 
-    def update(self, instance, validated_data):
-        raise NotImplementedError
+class Object3DRetrieve(serializers.Serializer):  # NOQA
 
-
-__all__ = ['Object3DSerializer']
+    uri = serializers.CharField()

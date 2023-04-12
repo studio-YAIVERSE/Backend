@@ -5,7 +5,7 @@ from rest_framework.decorators import action
 from django.contrib.auth.models import User
 
 from .models import Object3D
-from .serializers import Object3DSerializer, Object3DCreation
+from .serializers import Object3DSerializer, Object3DCreation, Object3DRetrieve
 
 from .pytorch import inference
 
@@ -14,11 +14,10 @@ class Object3DModelViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, Gener
 
     queryset = Object3D.objects.all()
     serializer_class = Object3DSerializer
-    create_serializer_class = Object3DCreation
 
     def get_serializer_class(self):
         if self.action == "retrieve":
-            return
+            return Object3DRetrieve
         elif self.action == "create":
             return Object3DCreation
         else:  # default
@@ -49,7 +48,7 @@ class Object3DModelViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, Gener
         inference_result = inference(serializer.data["name"])
         instance = Object3D(name=serializer.data["name"], description=serializer.data["description"])
         instance.user = get_object_or_404(User, username=self.kwargs["username"])
-        instance.file = File(inference_result, name="{}.jpg".format(instance.name))
+        instance.file = File(inference_result, name="{}.zip".format(instance.name))
         # instance.thumbnail = File(io.BytesIO(b""), name="{}.jpg".format(instance.name))
         instance.save()
 
