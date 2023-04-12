@@ -1,67 +1,149 @@
-# Run Server
+# Backend TODOs
 
-```bash
-python3 -m studio_YAIVERSE runserver --noreload
-```
+<details>
+<summary>펼쳐보기</summary>
+
+### 4주차 Backend TODO
+
+- [ ] Implement Text to Model View (have to change `MODEL_OPS`)
+  - Val `studio_YAIVERSE.settings.MODEL_OPTS`
+  - Fun `studio_YAIVERSE.apps.main.pytorch.functions.inference`
+- [ ] Thumbnail Generation
 
 
-# 3주차 Backend TODO
+### 3주차 Backend TODO
 
 - [X] Finalize Warm-Up
-  - Fun `studio_YAIVERSE.main.apps._warm_up`
 - [X] Pretrained Weight Retrieve & Register in Settings
 - [X] Test & Modification of Inference View (in GPU Server)
-  - Fun `studio_YAIVERSE.main.views.inference.inference`
 - [X] Modification of Object3D RUD View
-  - Cls `studio_YAIVERSE.main.views.object_3d.Object3DModelViewSet`
-  - Cls `studio_YAIVERSE.main.views.object_3d.get_object_3d_list`
-- [ ] Implement Text to Model View (have to change `MODEL_OPS`)
-  - Val `studio_YAIVERSE.config.settings.MODEL_OPTS`
-  - Fun `studio_YAIVERSE.main.views.inference.inference`
 
 
-# 1-2주차 Backend TODO
+### 1-2주차 Backend TODO
 
 - [X] REPO Creation & Base Settings
 - [X] base DB
 - [X] base VIEW
 - [X] schema
 
-## DB
+</details>
 
-- User Table
-    
-| userid   | identifier | USER 고유 번호                            |
-|----------|------------|---------------------------------------|
-| username | string     | ID 개념                                 |
-| password | string     | hash value of user password (아직은 명목상) |
+# How to run
 
-- 3D Object Table
+## Requirements
 
-| object_id            | identifier | OBJECT 고유 번호       |
-|----------------------|------------|--------------------|
-| object_name          | string     | OBJECT 이름          |
-| object_description   | string     | OBJECT 설명          |
-| object_uri           | string     | 3D OBJECT FILE URI |
-| object_thumbnail_uri | string     | THUMBNAIL URI      |
-| (기타 필요한 metadata)    |            |                    |
+* Python 3.8: We highly recommend using `python3.8` for compatibility.
+* CUDA and CUDNN: We need `cuda-11.1` and `cudnn-8.0.5` for **compiling GET3D extensions**.
+  * Manually install via [homepage](https://developer.nvidia.com/cuda-downloads), or use [Docker image](https://hub.docker.com/r/nvidia/cuda).
 
-## VIEW
-1. `{"username": "$USERNAME"}` 형태로 전달 시 유저 생성
-2. `{"username": "$USERNAME"}` 형태로 전달 시 object list 반환
-    - Return 형식: **json(list)**
-            
-        ```json
-        [
-            {"object_id": "", "object_name": "", "object_thumbnail_uri": ""},
-            {"object_id": "", "object_name": "", "object_thumbnail_uri": ""},
-            {"object_id": "", "object_name": "", "object_thumbnail_uri": ""}
-        ]
-        ```
-            
-3. `{"username": "$USERNAME", "object_id": "$OBJECT_ID"}` 형태로 전달 시 3d file 반환
-    - Return 형식: **Binary File**
 
-## **Schema**
+## Preparation
 
-`127.0.0.1:8000/`
+* Optional: make virtual environment. (recommended)
+
+```bash
+python3 -m pip install virtualenv
+python3 -m virtualenv venv --python=3.8
+source venv/bin/activate
+```
+
+* We provide `setup.sh` for installing dependencies and model weight retrieval.
+
+```bash
+sh setup.sh
+```
+
+
+## How to run dev server
+
+* `--noreload` is required: otherwise, model is loaded twice.
+* you can use `python3 manage.py` interface with `python3 -m studio_YAIVERSE`.
+
+```bash
+python3 -m studio_YAIVERSE runserver --noreload
+```
+
+
+# Appendix. How to deploy with gunicorn & nginx
+
+* `SERVER_NAME`, `SECRET_KEY`(optional) is required. alternate it to your server address.
+```bash
+export SERVER_NAME={your-server-address}
+export SECRET_KEY={secret-key}
+```
+
+1. Write secret.json: implement SECRET_KEY, ALLOWED_HOSTS, and DATABASES
+```bash
+echo "{
+  \"ALLOWED_HOSTS\": [\"$SERVER_NAME\"],
+  \"SECRET_KEY\" : \"$SECRET_KEY\",
+  \"DATABASES\": {
+    \"default\": {
+      \"ENGINE\": \"django.db.backends.sqlite3\",
+      \"NAME\": \"$(pwd)/db.sqlite3\"
+    }
+  }
+}
+" > secret.json
+```
+
+2. Write gunicorn service file (gunicorn is already installed by `setup.sh`)
+```bash
+sudo echo "[Unit]
+Description=studio-YAIVERSE gunicorn daemon
+After=network.target
+
+[Service]
+User=$(whoami)
+Group=$(whoami)
+WorkingDirectory=$(pwd)
+ExecStart=$(which gunicorn) \\
+        --workers 2 \\
+        --bind unix:/tmp/studio-yaiverse-gunicorn.sock \\
+        studio_YAIVERSE.wsgi:application
+
+[Install]
+WantedBy=multi-user.target" > /etc/systemd/system/studio-yaiverse-gunicorn.service
+```
+
+3. Install nginx, prepare static files, and configure your site.
+```bash
+sudo apt install nginx
+
+TORCH_ENABLED=0 python -m studio_YAIVERSE collectstatic
+
+sudo echo "server {
+        listen 80;
+        server_name $SERVER_NAME;
+
+        location = /favicon.ico { access_log off; log_not_found off; }
+
+        location /static {
+                alias $(pwd)/staticfiles;
+        }
+
+        location /media {
+                alias $(pwd)/attachment;
+        }
+
+        location / {
+                include proxy_params;
+                proxy_pass http://unix:/tmp/studio-yaiverse-gunicorn.sock;
+        }
+}" > /etc/nginx/sites-available/studio-yaiverse-site
+
+if [ -f /etc/nginx/sites-enabled/default ]; then
+    sudo rm /etc/nginx/sites-enabled/default
+fi
+sudo ln -s /etc/nginx/sites-available/studio-yaiverse-site /etc/nginx/sites-enabled/studio-yaiverse-site
+```
+
+4. Enable and start gunicorn and nginx service
+```bash
+sudo systemctl enable studio-yaiverse-gunicorn
+sudo systemctl start studio-yaiverse-gunicorn
+sudo systemctl enable nginx
+sudo systemctl restart nginx
+```
+
+5. Your site is now running at `http://$SERVER_NAME`!
