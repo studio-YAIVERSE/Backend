@@ -1,5 +1,6 @@
-from django.shortcuts import get_list_or_404, get_object_or_404, redirect, Http404
+from django.shortcuts import get_list_or_404, get_object_or_404, Http404
 from django.core.files import File
+from django.http import FileResponse
 from rest_framework.viewsets import GenericViewSet, mixins
 from rest_framework.decorators import action
 from django.contrib.auth.models import User
@@ -29,14 +30,18 @@ class Object3DModelViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, Gener
         return super().filter_queryset(queryset)
 
     @action(detail=True)
-    def retrieve(self, request, username, name):
-        object_3d = get_object_or_404(
+    def retrieve(self, request, username, name) -> FileResponse:
+        instance = get_object_or_404(
             self.get_queryset(),
             user__username=username,
             name=name
         )
-        if object_3d.file:
-            return redirect(object_3d.file.url)
+        if instance.file:
+            file_handle = instance.file.open()
+            response = FileResponse(file_handle, content_type='whatever')
+            response['Content-Length'] = instance.file.size
+            response['Content-Disposition'] = 'attachment; filename="%s"' % instance.file.name
+            return response
         else:
             raise Http404("No file")
 
