@@ -32,4 +32,4 @@ urllib3
 scipy
 click
 tqdm
-opencv-python==4.5.4
+opencv-python==4.5.4.58
