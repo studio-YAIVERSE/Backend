@@ -6,8 +6,8 @@
 ### 4주차 Backend TODO
 
 - [ ] Implement Text to Model View (have to change `MODEL_OPS`)
-  - Val `studio_YAIVERSE.config.settings.MODEL_OPTS`
-  - Fun `studio_YAIVERSE.main.views.inference.inference`
+  - Val `studio_YAIVERSE.settings.MODEL_OPTS`
+  - Fun `studio_YAIVERSE.apps.main.pytorch.functions.inference`
 - [ ] Thumbnail Generation
 
 
@@ -85,7 +85,7 @@ WorkingDirectory=$(pwd)
 ExecStart=$(which gunicorn) \\
         --workers 2 \\
         --bind unix:/tmp/studio-yaiverse-gunicorn.sock \\
-        config.wsgi:application
+        studio_YAIVERSE.wsgi:application
 
 [Install]
 WantedBy=multi-user.target" > /etc/systemd/system/studio-yaiverse-gunicorn.service
