@@ -32,8 +32,9 @@
 
 ## Requirements
 
-* We need `cuda-11.1` and `cudnn-8.0.5` for **compiling GET3D extensions**.
-* Manually install via [homepage](https://developer.nvidia.com/cuda-downloads), or use [Docker image](https://hub.docker.com/r/nvidia/cuda).
+* Python 3.8: We highly recommend using `python3.8` for compatibility.
+* CUDA and CUDNN: We need `cuda-11.1` and `cudnn-8.0.5` for **compiling GET3D extensions**.
+  * Manually install via [homepage](https://developer.nvidia.com/cuda-downloads), or use [Docker image](https://hub.docker.com/r/nvidia/cuda).
 
 
 ## Preparation
