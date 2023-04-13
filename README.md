@@ -42,7 +42,8 @@ sh setup.sh
 
 # How to run dev server
 
-* --noreload is required: otherwise, model is loaded twice.
+* `--noreload` is required: otherwise, model is loaded twice.
+* you can use `python3 manage.py` interface with `python3 -m studio_YAIVERSE`.
 
 ```bash
 python3 -m studio_YAIVERSE runserver --noreload
@@ -51,7 +52,7 @@ python3 -m studio_YAIVERSE runserver --noreload
 
 # Appendix. How to deploy with gunicorn & nginx
 
-* SERVER_NAME, SECRET_KEY(optional) is required. alternate it to your server address.
+* `SERVER_NAME`, `SECRET_KEY`(optional) is required. alternate it to your server address.
 ```bash
 export SERVER_NAME={your-server-address}
 export SECRET_KEY={secret-key}
