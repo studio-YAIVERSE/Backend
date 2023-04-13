@@ -1,7 +1,5 @@
+import functools
 from django.conf import settings
-import threading
-__init_lock = threading.RLock()
-__initialized = False
 
 
 def __setup_path():
@@ -15,21 +13,34 @@ def __setup_path():
     __setup_path.done = True
 
 
+def __check_pytorch():
+    if not settings.TORCH_ENABLED:
+        return
+    try:
+        import torch
+        torch.cuda.init()
+    except (ImportError, RuntimeError, AssertionError):
+        import os
+        import sys
+        if sys.argv[1] == "runserver" or "gunicorn" in sys.modules or "TORCH_ENABLED" in os.environ:
+            raise
+        import warnings
+        warnings.warn("Pytorch cuda runtime is not available, skipping pytorch ops...")
+        settings.TORCH_ENABLED = False
+
+
 def __setup_torch_extensions():
     if not settings.TORCH_ENABLED:
         return
     print("Initializing Pytorch Extensions")
-    try:
-        import torch
-        from torch.backends import cuda, cudnn
-        from torch_utils.ops import upfirdn2d
-        from torch_utils.ops import bias_act
-        from torch_utils.ops import filtered_lrelu
-        from torch_utils.ops import grid_sample_gradfix
-        from torch_utils.ops import conv2d_gradfix
-    except ModuleNotFoundError:
-        assert getattr(__setup_path, "done", False), "call __init_path() before __init_extensions()"
-        raise
+    import torch
+    from torch.backends import cuda, cudnn
+    from torch_utils.ops import upfirdn2d
+    from torch_utils.ops import bias_act
+    from torch_utils.ops import filtered_lrelu
+    from torch_utils.ops import grid_sample_gradfix
+    from torch_utils.ops import conv2d_gradfix
+    torch.cuda.init()
     cudnn.enabled = True
     cudnn.benchmark = True  # Improves training speed.
     cudnn.allow_tf32 = True  # Improves numerical accuracy.
@@ -61,19 +72,13 @@ def __setup_seed():
     torch.manual_seed(settings.TORCH_SEED)
 
 
-def __setup_all():
-    global __initialized
-    if __initialized:
-        return
-    with __init_lock:
-        if __initialized:
-            return
-        __setup_path()
-        __setup_torch_extensions()
-        __setup_torch_device()
-        __setup_seed()
-        __initialized = True
-
-
+@functools.lru_cache(maxsize=None)
 def setup():
-    __setup_all()
+    __setup_path()
+    __check_pytorch()
+    __setup_torch_extensions()
+    __setup_torch_device()
+    __setup_seed()
+
+
+__all__ = ['setup']

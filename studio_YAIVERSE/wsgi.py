@@ -1,16 +1,21 @@
 """
-WSGI config for config project.
+WSGI with Gunicorn
+==================
+This module provides a WSGI application for use with Gunicorn.
 
-It exposes the WSGI callable as a module-level variable named ``application``.
+If you run server with gunicorn, it will use production settings.
+Otherwise, it will use local settings.
 
-For more information on this file, see
-https://docs.djangoproject.com/en/4.1/howto/deployment/wsgi/
 """
 
+import sys
 import os
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'studio_YAIVERSE.config.settings.prod')
+if 'gunicorn' in sys.modules:
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'studio_YAIVERSE.settings.prod')
+else:
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'studio_YAIVERSE.settings')
 
 application = get_wsgi_application()

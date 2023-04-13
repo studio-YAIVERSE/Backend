@@ -1,8 +1,6 @@
 from functools import lru_cache
-
 from django.conf import settings
-
-from studio_YAIVERSE.utils import at_working_directory
+from .utils import at_working_directory
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
