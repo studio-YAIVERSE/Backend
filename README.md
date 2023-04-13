@@ -111,7 +111,6 @@ sudo apt install nginx
 
 TORCH_ENABLED=0 python -m studio_YAIVERSE collectstatic
 
-cd /etc/nginx/sites-available/
 sudo echo "server {
         listen 80;
         server_name $SERVER_NAME;
@@ -132,11 +131,10 @@ sudo echo "server {
         }
 }" > /etc/nginx/sites-available/studio-yaiverse-site
 
-cd /etc/nginx/sites-enabled/
-if [ -f default ]; then
-    sudo rm default
+if [ -f /etc/nginx/sites-enabled/default ]; then
+    sudo rm /etc/nginx/sites-enabled/default
 fi
-sudo ln -s /etc/nginx/sites-available/studio-yaiverse-site studio-yaiverse-site
+sudo ln -s /etc/nginx/sites-available/studio-yaiverse-site /etc/nginx/sites-enabled/studio-yaiverse-site
 ```
 
 4. Enable and start gunicorn and nginx service
