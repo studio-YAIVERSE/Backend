@@ -6,8 +6,8 @@
 ### 4주차 Backend TODO
 
 - [ ] Implement Text to Model View (have to change `MODEL_OPS`)
-  - Val `studio_YAIVERSE.config.settings.MODEL_OPTS`
-  - Fun `studio_YAIVERSE.main.views.inference.inference`
+  - Val `studio_YAIVERSE.settings.MODEL_OPTS`
+  - Fun `studio_YAIVERSE.apps.main.pytorch.functions.inference`
 - [ ] Thumbnail Generation
 
 
@@ -22,27 +22,41 @@
 ### 1-2주차 Backend TODO
 
 - [X] REPO Creation & Base Settings
-- [X] base DB가
+- [X] base DB
 - [X] base VIEW
 - [X] schema
 
 </details>
 
-# Preparation
+# How to run
 
-* We provide `setup.sh` for installing dependencies and model weight retrieval.
+## Requirements
+
+* We need `cuda-11.1` and `cudnn-8.0.5` for **compiling GET3D extensions**.
+* Manually install via [homepage](https://developer.nvidia.com/cuda-downloads), or use [Docker image](https://hub.docker.com/r/nvidia/cuda).
+
+
+## Preparation
+
+* Optional: make virtual environment. (recommended)
 
 ```bash
 python3 -m pip install virtualenv
 python3 -m virtualenv venv --python=3.8
 source venv/bin/activate
+```
+
+* We provide `setup.sh` for installing dependencies and model weight retrieval.
+
+```bash
 sh setup.sh
 ```
 
 
-# How to run dev server
+## How to run dev server
 
-* --noreload is required: otherwise, model is loaded twice.
+* `--noreload` is required: otherwise, model is loaded twice.
+* you can use `python3 manage.py` interface with `python3 -m studio_YAIVERSE`.
 
 ```bash
 python3 -m studio_YAIVERSE runserver --noreload
@@ -51,7 +65,7 @@ python3 -m studio_YAIVERSE runserver --noreload
 
 # Appendix. How to deploy with gunicorn & nginx
 
-* SERVER_NAME, SECRET_KEY(optional) is required. alternate it to your server address.
+* `SERVER_NAME`, `SECRET_KEY`(optional) is required. alternate it to your server address.
 ```bash
 export SERVER_NAME={your-server-address}
 export SECRET_KEY={secret-key}
@@ -72,7 +86,7 @@ echo "{
 " > secret.json
 ```
 
-2. Write gunicorn service file
+2. Write gunicorn service file (gunicorn is already installed by `setup.sh`)
 ```bash
 sudo echo "[Unit]
 Description=studio-YAIVERSE gunicorn daemon
@@ -85,7 +99,7 @@ WorkingDirectory=$(pwd)
 ExecStart=$(which gunicorn) \\
         --workers 2 \\
         --bind unix:/tmp/studio-yaiverse-gunicorn.sock \\
-        config.wsgi:application
+        studio_YAIVERSE.wsgi:application
 
 [Install]
 WantedBy=multi-user.target" > /etc/systemd/system/studio-yaiverse-gunicorn.service
