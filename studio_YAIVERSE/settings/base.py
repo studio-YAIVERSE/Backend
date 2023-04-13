@@ -159,7 +159,7 @@ USE_TZ = False
 
 STATIC_URL = '/static/'
 
-# STATICFILES_DIRS = [BASE_DIR / 'studio_YAIVERSE/static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = '/media/'
 
