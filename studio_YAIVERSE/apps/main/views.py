@@ -46,11 +46,16 @@ class Object3DModelViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, Gener
         return super().list(request, username)
 
     def perform_create(self, serializer):
-        infer_result = inference(serializer.data["name"], serializer.data["text"], extensions=("glb", "png"))
+        infer_result = inference(
+            serializer.data["name"],
+            serializer.data["text"],
+            # extensions=("glb", "png")
+            extensions=("glb",)
+        )
         instance = Object3D(name=serializer.data["name"], description=serializer.data["description"])
         instance.user = get_object_or_404(User, username=self.kwargs["username"])
         instance.file = File(infer_result["glb"], name="{}.glb".format(instance.name))
-        instance.thumbnail = File(infer_result["png"], name="{}.png".format(instance.name))
+        # instance.thumbnail = File(infer_result["png"], name="{}.png".format(instance.name))
         instance.save()
 
     @action(methods=["POST"], detail=False)

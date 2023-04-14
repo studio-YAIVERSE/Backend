@@ -2,9 +2,14 @@ from functools import lru_cache
 from django.conf import settings
 from .utils import at_working_directory
 
+try:
+    from tqdm.auto import trange
+except ImportError:
+    def trange(*args, **_): return range(*args)
+
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from .setup import __setup_path; __setup_path(); del __setup_path  # NOQA
+    import torch
     from typing import Optional
     from training.networks_get3d import GeneratorDMTETMesh
 
@@ -13,20 +18,19 @@ G_EMA: "Optional[GeneratorDMTETMesh]" = None
 
 
 @lru_cache(maxsize=None)
-def get_device():
+def get_device() -> "Optional[torch.device]":
     if not settings.TORCH_ENABLED:
         return
     import torch
     return torch.device(settings.TORCH_DEVICE)
 
 
-@lru_cache(maxsize=None)
 def get_generator_ema() -> "GeneratorDMTETMesh":
     assert G_EMA is not None
     return G_EMA
 
 
-def construct_all():
+def construct_all() -> None:
 
     global G_EMA
 
@@ -82,21 +86,16 @@ def construct_all():
             n_implicit_layer=settings.MODEL_OPTS["n_implicit_layer"],
             **extra_kwargs
         )
-    # G.train().requires_grad_(False).to(device)  # subclass of torch.nn.Module
-    # G_ema = copy.deepcopy(G).eval()  # deepcopy can make sure they are correct.
     generator_ema = G.eval().requires_grad_(False).to(device)  # use same object
 
     print("Loading state dict from: {}".format(settings.TORCH_WEIGHT_PATH))
     model_state_dict = torch.load(settings.TORCH_WEIGHT_PATH, map_location=device)
-    # G.load_state_dict(model_state_dict['G'], strict=True)
-    # G_ema.load_state_dict(model_state_dict['G_ema'], strict=True)
     generator_ema.load_state_dict(model_state_dict['G_ema'], strict=True)
 
     total = settings.TORCH_WARM_UP_ITER
     geo_z = torch.randn([1, generator_ema.z_dim], device=device)
     tex_z = torch.randn([1, generator_ema.z_dim], device=device)
-    for i in range(1, total + 1):
-        print("Warming up... ({i}/{total})".format(i=i, total=total))
+    for _ in trange(1, total + 1, desc="Warming up...", leave=False):
         generator_ema.update_w_avg(None)
         generator_ema.generate_3d_mesh(geo_z=geo_z, tex_z=tex_z, c=None, truncation_psi=0.7)
 

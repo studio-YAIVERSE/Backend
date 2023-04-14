@@ -9,6 +9,7 @@ import torch
 import trimesh
 
 from .nn import get_generator_ema, get_device
+from .utils import inference_mode
 
 from typing import TYPE_CHECKING, overload
 if TYPE_CHECKING:
@@ -69,23 +70,23 @@ def postprocess_texture_map(tensor: "torch.Tensor") -> "PIL.Image.Image":
 @overload
 def inference(
         name: "str",
-        text: "Optional[str]" = None,
-        extensions: "Sequence[str]" = ("glb", "png")
+        text: "Optional[str]" = ...,
+        extensions: "Sequence[str]" = ...
 ) -> "Dict[str, io.BytesIO]": ...
 
 
 @overload
 def inference(
         name: "str",
-        text: "Optional[str]" = None,
-        extensions: "Sequence[()]" = ("glb", "png")
+        text: "Optional[str]" = ...,
+        extensions: "Sequence[()]" = ...
 ) -> "io.BytesIO": ...
 
 
-@torch.inference_mode()
+@inference_mode()
 def inference(name, text=None, extensions=("glb", "png")):
 
-    print("Running inference(name={name!r}, text={text!r})".format(name=name, text=text))
+    print("Running inference({})".format(", ".join("{0}={1!r}".format(*i) for i in locals().items())))
 
     device = get_device()
     g_ema = get_generator_ema()
@@ -127,10 +128,10 @@ def inference(name, text=None, extensions=("glb", "png")):
         result = {}
 
         if extensions:
-            mesh = trimesh.load("{}.obj".format(mesh_obj_name))
+            mesh = trimesh.load(mesh_obj_name)
             for ext in extensions:
                 if ext.lower() == "png":
-                    result[ext] = io.BytesIO(mesh.scene().save_image(visible=False, resolution=(512, 512)))
+                    result[ext] = io.BytesIO(mesh.scene().save_image(visible=False, resolution=(512, 512)))  # TODO
                 else:
                     result[ext] = io.BytesIO(mesh.export(file_type=ext))
         else:
