@@ -10,7 +10,7 @@ import trimesh
 
 from .nn import get_generator_ema, get_device
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 if TYPE_CHECKING:
     from typing import *
 
