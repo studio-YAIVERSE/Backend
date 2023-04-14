@@ -31,11 +31,7 @@ class Object3DModelViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, Gener
 
     @action(detail=True)
     def retrieve(self, request, username, name) -> FileResponse:
-        instance = get_object_or_404(
-            self.get_queryset(),
-            user__username=username,
-            name=name
-        )
+        instance = get_object_or_404(self.get_queryset(), user__username=username, name=name)
         if instance.file:
             file_handle = instance.file.open()
             response = FileResponse(file_handle, content_type='whatever')
@@ -50,11 +46,11 @@ class Object3DModelViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, Gener
         return super().list(request, username)
 
     def perform_create(self, serializer):
-        inference_result = inference(serializer.data["name"], serializer.data["text"])
+        infer_result = inference(serializer.data["name"], serializer.data["text"], extensions=("glb", "png"))
         instance = Object3D(name=serializer.data["name"], description=serializer.data["description"])
         instance.user = get_object_or_404(User, username=self.kwargs["username"])
-        instance.file = File(inference_result, name="{}.zip".format(instance.name))
-        # instance.thumbnail = File(io.BytesIO(b""), name="{}.jpg".format(instance.name))
+        instance.file = File(infer_result["glb"], name="{}.glb".format(instance.name))
+        instance.thumbnail = File(infer_result["png"], name="{}.png".format(instance.name))
         instance.save()
 
     @action(methods=["POST"], detail=False)

@@ -8,7 +8,8 @@
 - [ ] Implement Text to Model View (have to change `MODEL_OPS`)
   - Val `studio_YAIVERSE.settings.MODEL_OPTS`
   - Fun `studio_YAIVERSE.apps.main.pytorch.functions.inference`
-- [ ] Thumbnail Generation
+- [X] Thumbnail Generation
+- [X] obj to glb
 
 
 ### 3주차 Backend TODO
@@ -32,8 +33,9 @@
 
 ## Requirements
 
-* We need `cuda-11.1` and `cudnn-8.0.5` for **compiling GET3D extensions**.
-* Manually install via [homepage](https://developer.nvidia.com/cuda-downloads), or use [Docker image](https://hub.docker.com/r/nvidia/cuda).
+* Python 3.8: We highly recommend using `python3.8` for compatibility.
+* CUDA and CUDNN: We need `cuda-11.1` and `cudnn-8.0.5` for **compiling GET3D extensions**.
+  * Manually install via [homepage](https://developer.nvidia.com/cuda-downloads), or use [Docker image](https://hub.docker.com/r/nvidia/cuda).
 
 
 ## Preparation

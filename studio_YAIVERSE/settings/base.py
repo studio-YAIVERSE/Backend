@@ -76,14 +76,6 @@ INSTALLED_APPS = [
     'django_extensions',
     'corsheaders',
 
-    # Django Extensions for social login - uncomment to use
-    # 'django.contrib.sites',
-    # 'allauth',
-    # 'allauth.account',
-    # 'allauth.socialaccount',
-    # 'allauth.socialaccount.providers.naver',
-    # 'widget_tweaks',
-
     # User-Apps
     'studio_YAIVERSE.apps.accounts',
     'studio_YAIVERSE.apps.main',
@@ -178,16 +170,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTHENTICATION_BACKENDS = [
     # Built-in Backend
     'django.contrib.auth.backends.ModelBackend',
-    # Allauth Social Login Backend - uncomment to use
-    # 'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
 # LOGIN_URL = '/accounts/login/'
 
 # LOGIN_REDIRECT_URL = '/'
-
-
-# User-App Required Settings
 
 
 # Remove modules used
