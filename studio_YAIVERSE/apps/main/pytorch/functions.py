@@ -127,7 +127,7 @@ def inference(name, text=None, extensions=("glb", "png")):
         result = {}
 
         if extensions:
-            mesh = trimesh.load("{}.obj".format(mesh_obj_name))
+            mesh = trimesh.load(mesh_obj_name)
             for ext in extensions:
                 if ext.lower() == "png":
                     result[ext] = io.BytesIO(mesh.scene().save_image(visible=False, resolution=(512, 512)))
