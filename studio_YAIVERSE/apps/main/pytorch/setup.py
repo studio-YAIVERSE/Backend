@@ -22,7 +22,7 @@ def __check_pytorch():
     except (ImportError, RuntimeError, AssertionError):
         import os
         import sys
-        if sys.argv[1] == "runserver" or "gunicorn" in sys.modules or "TORCH_ENABLED" in os.environ:
+        if sys.argv[1:][:1] == ["runserver"] or "gunicorn" in sys.modules or "TORCH_ENABLED" in os.environ:
             raise
         import warnings
         warnings.warn("Pytorch cuda runtime is not available, skipping pytorch ops...")

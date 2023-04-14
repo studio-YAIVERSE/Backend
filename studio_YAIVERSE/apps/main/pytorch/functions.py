@@ -6,12 +6,16 @@ import PIL.Image
 import numpy as np
 import cv2
 import torch
-
+import trimesh
 
 from .nn import get_generator_ema, get_device
 
+from typing import TYPE_CHECKING, overload
+if TYPE_CHECKING:
+    from typing import *
 
-def format_material(filename):
+
+def format_material(filename: "str") -> "str":
     material = (
         'newmtl material_0\n'
         'Kd 1 1 1\n'
@@ -24,7 +28,13 @@ def format_material(filename):
     return material.format(filename=filename)
 
 
-def format_mesh_obj(pointnp_px3, tcoords_px2, facenp_fx3, facetex_fx3, filename):
+def format_mesh_obj(
+        pointnp_px3: "Union[np.ndarray, torch.Tensor]",
+        tcoords_px2: "Union[np.ndarray, torch.Tensor]",
+        facenp_fx3: "Union[np.ndarray, torch.Tensor]",
+        facetex_fx3: "Union[np.ndarray, torch.Tensor]",
+        filename: "str"
+) -> "str":
     buf = io.StringIO()
     try:
         buf.write('mtllib {filename}.mtl\n'.format(filename=filename))
@@ -42,35 +52,51 @@ def format_mesh_obj(pointnp_px3, tcoords_px2, facenp_fx3, facetex_fx3, filename)
         buf.close()
 
 
-def postprocess_texture_map(array):
-    lo, hi = (-1, 1)
-    img = np.asarray(array.permute(1, 2, 0).data.cpu().numpy(), dtype=np.float32)
-    img = (img - lo) * (255 / (hi - lo))
-    img = img.clip(0, 255)
+def postprocess_texture_map(tensor: "torch.Tensor") -> "PIL.Image.Image":
+    lo, hi = -1, 1
+    tensor = (tensor - lo) * (255 / (hi - lo))
+    tensor = tensor.clip(0, 255).float()
+    img = tensor.permute(1, 2, 0).detach().cpu().numpy()
     mask = np.sum(img.astype(float), axis=-1, keepdims=True)
     mask = (mask <= 3.0).astype(float)
-    kernel = np.ones((3, 3), 'uint8')
+    kernel = np.ones((3, 3), dtype=np.uint8)
     dilate_img = cv2.dilate(img, kernel, iterations=1)  # NOQA
     img = img * (1 - mask) + dilate_img * mask
     img = img.clip(0, 255).astype(np.uint8)
     return PIL.Image.fromarray(np.ascontiguousarray(img[::-1, :, :]), 'RGB')
 
 
+@overload
+def inference(
+        name: "str",
+        text: "Optional[str]" = None,
+        extensions: "Sequence[str]" = ("glb", "png")
+) -> "Dict[str, io.BytesIO]": ...
+
+
+@overload
+def inference(
+        name: "str",
+        text: "Optional[str]" = None,
+        extensions: "Sequence[()]" = ("glb", "png")
+) -> "io.BytesIO": ...
+
+
 @torch.inference_mode()
-def inference(name, text=None):
+def inference(name, text=None, extensions=("glb", "png")):
 
     print("Running inference(name={name!r}, text={text!r})".format(name=name, text=text))
 
     device = get_device()
-    G_ema = get_generator_ema()
+    g_ema = get_generator_ema()
 
-    geo_z = torch.randn([1, G_ema.z_dim], device=device)
-    tex_z = torch.randn([1, G_ema.z_dim], device=device)
+    geo_z = torch.randn([1, g_ema.z_dim], device=device)
+    tex_z = torch.randn([1, g_ema.z_dim], device=device)
 
     c_to_compute_w_avg = None
-    G_ema.update_w_avg(c_to_compute_w_avg)
+    g_ema.update_w_avg(c_to_compute_w_avg)
 
-    generated_mesh = G_ema.generate_3d_mesh(
+    generated_mesh = g_ema.generate_3d_mesh(
         geo_z=geo_z, tex_z=tex_z, c=None, truncation_psi=0.7,
         use_style_mixing=False
     )
@@ -98,10 +124,21 @@ def inference(name, text=None):
         with open(text_map_name, 'wb') as fp:
             texture_map.save(fp)
 
-        bundle_fp = io.BytesIO()
-        bundle = zipfile.ZipFile(bundle_fp, "w")
-        bundle.write(mesh_obj_name, arcname=name + '.obj', compress_type=zipfile.ZIP_DEFLATED)
-        bundle.write(material_name, arcname=name + '.mtl', compress_type=zipfile.ZIP_DEFLATED)
-        bundle.write(text_map_name, arcname=name + '.png', compress_type=zipfile.ZIP_DEFLATED)
+        result = {}
 
-    return bundle_fp
+        if extensions:
+            mesh = trimesh.load("{}.obj".format(mesh_obj_name))
+            for ext in extensions:
+                if ext.lower() == "png":
+                    result[ext] = io.BytesIO(mesh.scene().save_image(visible=False, resolution=(512, 512)))
+                else:
+                    result[ext] = io.BytesIO(mesh.export(file_type=ext))
+        else:
+            bundle_fp = io.BytesIO()
+            bundle = zipfile.ZipFile(bundle_fp, "w")
+            bundle.write(mesh_obj_name, arcname=name + '.obj', compress_type=zipfile.ZIP_DEFLATED)
+            bundle.write(material_name, arcname=name + '.mtl', compress_type=zipfile.ZIP_DEFLATED)
+            bundle.write(text_map_name, arcname=name + '.png', compress_type=zipfile.ZIP_DEFLATED)
+            return bundle_fp
+
+        return result

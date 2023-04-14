@@ -8,7 +8,8 @@
 - [ ] Implement Text to Model View (have to change `MODEL_OPS`)
   - Val `studio_YAIVERSE.settings.MODEL_OPTS`
   - Fun `studio_YAIVERSE.apps.main.pytorch.functions.inference`
-- [ ] Thumbnail Generation
+- [X] Thumbnail Generation
+- [X] obj to glb
 
 
 ### 3주차 Backend TODO
