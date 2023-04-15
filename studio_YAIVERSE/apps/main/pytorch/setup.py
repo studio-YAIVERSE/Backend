@@ -73,7 +73,7 @@ def __setup_seed():
 
 
 @functools.lru_cache(maxsize=None)
-def setup():
+def setup() -> None:
     __setup_path()
     __check_pytorch()
     __setup_torch_extensions()
