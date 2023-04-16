@@ -8,7 +8,7 @@ import cv2
 import torch
 import nvdiffrast.torch as dr
 import trimesh
-from dataclasses import dataclass
+from collections import namedtuple
 
 from .nn import get_generator_ema, get_device
 from .utils import inference_mode
@@ -255,10 +255,7 @@ def inference_logic(
     yield mesh_v, mesh_f, all_uvs, all_mesh_tex_idx, network_out
 
 
-@dataclass
-class inference_result:
-    file: "io.BytesIO"
-    thumbnail: "PIL.Image.Image"
+inference_result = namedtuple("inference_result", ["file", "thumbnail"])
 
 
 @inference_mode()
@@ -281,7 +278,9 @@ def inference(name: "str", text: "Optional[str]" = None, extension: "Optional[st
 
     img, _ = generated_thumbnail
     rgb_img = img[:, :3]
-    thumbnail = thumbnail_to_pil(rgb_img)
+    thumbnail_img = thumbnail_to_pil(rgb_img)
+    thumbnail = io.BytesIO()
+    thumbnail_img.save(thumbnail, format="PNG")
 
     (mesh_v,), (mesh_f,), (all_uvs,), (all_mesh_tex_idx,), (tex_map,) = generated_mesh
 
