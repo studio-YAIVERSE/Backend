@@ -28,6 +28,8 @@ TORCH_ENABLED = bool(int(_os.getenv("TORCH_ENABLED", 1)))
 
 TORCH_WARM_UP_ITER = int(_os.getenv("TORCH_WARM_UP_ITER", 10))
 
+TORCH_WITHOUT_CUSTOM_OPS_COMPILE = bool(int(_os.getenv("TORCH_WITHOUT_CUSTOM_OPS_COMPILE", 0)))
+
 TORCH_DEVICE = _os.getenv("TORCH_DEVICE", "cuda:0")
 
 TORCH_WEIGHT_PATH = _os.getenv("TORCH_WEIGHT_PATH", BASE_DIR / "weights/shapenet_car.pt")  # TODO

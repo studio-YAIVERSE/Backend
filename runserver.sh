@@ -1,1 +1,0 @@
-python3 -m studio_YAIVERSE runserver --noreload
