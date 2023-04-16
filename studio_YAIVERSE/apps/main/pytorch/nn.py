@@ -1,11 +1,8 @@
 from functools import lru_cache
+from tqdm.auto import trange
 from django.conf import settings
 from .utils import at_working_directory
 
-try:
-    from tqdm.auto import trange
-except ImportError:
-    def trange(*args, **_): return range(*args)
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:

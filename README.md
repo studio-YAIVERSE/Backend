@@ -5,9 +5,7 @@
 
 ### 4주차 Backend TODO
 
-- [ ] Implement Text to Model View (have to change `MODEL_OPS`)
-  - Val `studio_YAIVERSE.settings.MODEL_OPTS`
-  - Fun `studio_YAIVERSE.apps.main.pytorch.functions.inference`
+- [ ] Implement Text to Model View
 - [X] Thumbnail Generation
 - [X] obj to glb
 

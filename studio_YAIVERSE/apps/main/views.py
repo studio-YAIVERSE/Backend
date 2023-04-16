@@ -1,5 +1,6 @@
 from django.shortcuts import get_list_or_404, get_object_or_404, Http404
 from django.core.files import File
+from django.core.files.images import ImageFile
 from django.http import FileResponse
 from rest_framework.viewsets import GenericViewSet, mixins
 from rest_framework.decorators import action
@@ -46,16 +47,11 @@ class Object3DModelViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, Gener
         return super().list(request, username)
 
     def perform_create(self, serializer):
-        infer_result = inference(
-            serializer.data["name"],
-            serializer.data["text"],
-            # extensions=("glb", "png")
-            extensions=("glb",)
-        )
+        infer_result = inference(serializer.data["name"], serializer.data["text"])
         instance = Object3D(name=serializer.data["name"], description=serializer.data["description"])
         instance.user = get_object_or_404(User, username=self.kwargs["username"])
-        instance.file = File(infer_result["glb"], name="{}.glb".format(instance.name))
-        # instance.thumbnail = File(infer_result["png"], name="{}.png".format(instance.name))
+        instance.file = File(infer_result.file, name="{}.glb".format(instance.name))
+        instance.thumbnail = ImageFile(infer_result.thumbnail, name="{}.png".format(instance.name))
         instance.save()
 
     @action(methods=["POST"], detail=False)
