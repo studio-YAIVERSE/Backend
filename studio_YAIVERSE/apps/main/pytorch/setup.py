@@ -29,28 +29,42 @@ def __check_pytorch():
         settings.TORCH_ENABLED = False
 
 
-def __setup_torch_extensions():
+def __setup_torch_mode():
     if not settings.TORCH_ENABLED:
         return
-    print("Initializing Pytorch Extensions")
+    print("Initializing Pytorch")
     import torch
     from torch.backends import cuda, cudnn
-    from torch_utils.ops import upfirdn2d
-    from torch_utils.ops import bias_act
-    from torch_utils.ops import filtered_lrelu
-    from torch_utils.ops import grid_sample_gradfix
-    from torch_utils.ops import conv2d_gradfix
     torch.cuda.init()
     cudnn.enabled = True
     cudnn.benchmark = True  # Improves training speed.
     cudnn.allow_tf32 = True  # Improves numerical accuracy.
     cuda.matmul.allow_tf32 = True  # Improves numerical accuracy.
-    upfirdn2d._init()  # NOQA
-    bias_act._init()  # NOQA
-    filtered_lrelu._init()  # NOQA
+    torch.set_grad_enabled(False)
+
+
+def __setup_torch_extensions():
+    if not settings.TORCH_ENABLED:
+        return
+    print(
+        "Initializing Pytorch Extensions: with{} compiling custom ops"
+        .format("out" * settings.TORCH_WITHOUT_CUSTOM_OPS_COMPILE)
+    )
+    from torch_utils.ops import upfirdn2d
+    from torch_utils.ops import bias_act
+    from torch_utils.ops import filtered_lrelu
+    from torch_utils.ops import grid_sample_gradfix
+    from torch_utils.ops import conv2d_gradfix
     grid_sample_gradfix.enabled = True  # Avoids errors with the augmentation pipe.
     conv2d_gradfix.enabled = True  # Improves training speed.
-    torch.set_grad_enabled(False)
+    if not settings.TORCH_WITHOUT_CUSTOM_OPS_COMPILE:
+        upfirdn2d._init()  # NOQA
+        bias_act._init()  # NOQA
+        filtered_lrelu._init()  # NOQA
+    else:
+        upfirdn2d.upfirdn2d = upfirdn2d._upfirdn2d_ref  # NOQA
+        bias_act.bias_act = bias_act._bias_act_ref  # NOQA
+        filtered_lrelu.filtered_lrelu = filtered_lrelu._filtered_lrelu_ref  # NOQA
 
 
 def __setup_torch_device():
@@ -76,6 +90,7 @@ def __setup_seed():
 def setup() -> None:
     __setup_path()
     __check_pytorch()
+    __setup_torch_mode()
     __setup_torch_extensions()
     __setup_torch_device()
     __setup_seed()
