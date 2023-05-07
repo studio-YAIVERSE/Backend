@@ -1,9 +1,11 @@
 from django.shortcuts import get_list_or_404, get_object_or_404, Http404, resolve_url
 from django.core.files import File
 from django.http import FileResponse
+from rest_framework import status
 from rest_framework.viewsets import GenericViewSet, mixins
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
 from django.contrib.auth.models import User
 
 from .models import Object3D
@@ -56,8 +58,13 @@ class Object3DModelViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, Gener
         instance.thumbnail = File(infer_result.thumbnail, name="{}.png".format(instance.name))
         instance.save()
         serializer.thumbnail_uri = resolve_url(instance.thumbnail.url)
-        print(serializer.thumbnail_uri)
 
     @action(methods=["POST"], detail=False)
     def create(self, request, username):  # Inference
-        return super().create(request, username)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        result = serializer.data
+        result["thumbnail_uri"] = serializer.thumbnail_uri
+        return Response(result, status=status.HTTP_201_CREATED, headers=headers)
