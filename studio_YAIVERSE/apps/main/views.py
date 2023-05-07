@@ -55,6 +55,7 @@ class Object3DModelViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, Gener
         instance.file = File(infer_result.file, name="{}.glb".format(instance.name))
         instance.thumbnail = File(infer_result.thumbnail, name="{}.png".format(instance.name))
         instance.save()
+        print(instance.thumbnail.url)
         serializer.data["thumbnail_uri"] = resolve_url(instance.thumbnail.url)
 
     @action(methods=["POST"], detail=False)
