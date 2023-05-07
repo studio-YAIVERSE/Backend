@@ -25,6 +25,7 @@ class BaseModel(models.Model):
 
 
 class Object3D(BaseModel):
+
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, verbose_name='계정'
     )
@@ -39,18 +40,42 @@ class Object3D(BaseModel):
         verbose_name="3D Object 설명",
         help_text="3D Object 설명 입니다."
     )
-    file = models.FileField(
+    toggle = models.BooleanField(
+        default=False,
+        verbose_name="3D Object 효과 적용 여부",
+        help_text="3D Object 효과 적용 여부 입니다.",
+    )
+
+    with_effect_file = models.FileField(
         upload_to=file_upload_path,
         blank=True,
-        verbose_name="3D Object 파일",
-        help_text="3D Object 파일 입니다.",
+        verbose_name="3D Object with 효과 파일",
+        help_text="3D Object with 효과 파일 입니다.",
     )
-    thumbnail = models.ImageField(
+    with_effect_thumbnail = models.ImageField(
         upload_to=file_upload_path,
         blank=True,
-        verbose_name="3D Object 썸네일",
-        help_text="3D Object 썸네일 입니다.",
+        verbose_name="3D Object with 효과 썸네일",
+        help_text="3D Object with 효과 썸네일 입니다.",
     )
+    without_effect_file = models.FileField(
+        upload_to=file_upload_path,
+        blank=True,
+        verbose_name="3D Object without 효과 파일",
+        help_text="3D Object without 효과 파일 입니다.",
+    )
+    without_effect_thumbnail = models.ImageField(
+        upload_to=file_upload_path,
+        blank=True,
+        verbose_name="3D Object without 효과 썸네일",
+        help_text="3D Object without 효과 썸네일 입니다.",
+    )
+
+    file = property(lambda self: self.with_effect_file if self.toggle else self.without_effect_file)
+    thumbnail = property(lambda self: self.with_effect_thumbnail if self.toggle else self.without_effect_thumbnail)
+
+    file_uri = property(lambda self: self.file.url)
+    thumbnail_uri = property(lambda self: self.thumbnail.url)
 
     class Meta:
         verbose_name = '3D 오브젝트'
