@@ -17,4 +17,8 @@ urlpatterns = [
         v.Object3DModelViewSet.as_view({'post': 'create'}),
         name="object_3d_create"
     ),
+    path(
+        "delete/<str:username>/<str:name>/",
+        v.Object3DModelViewSet.as_view({'post': 'destroy'}),
+        name="object_3d_list"),
 ]
