@@ -179,5 +179,12 @@ AUTHENTICATION_BACKENDS = [
 # LOGIN_REDIRECT_URL = '/'
 
 
+# cors
+
+CORS_ALLOW_ALL_ORIGINS = True
+
+CORS_ALLOW_CREDENTIALS = True
+
+
 # Remove modules used
 del _os, _pathlib

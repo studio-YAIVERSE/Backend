@@ -1,4 +1,4 @@
-from django.shortcuts import get_list_or_404, get_object_or_404, Http404
+from django.shortcuts import get_list_or_404, get_object_or_404, Http404, resolve_url
 from django.core.files import File
 from django.http import FileResponse
 from rest_framework.viewsets import GenericViewSet, mixins
@@ -55,6 +55,7 @@ class Object3DModelViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, Gener
         instance.file = File(infer_result.file, name="{}.glb".format(instance.name))
         instance.thumbnail = File(infer_result.thumbnail, name="{}.png".format(instance.name))
         instance.save()
+        serializer.data["thumbnail_uri"] = resolve_url(instance.thumbnail.url)
 
     @action(methods=["POST"], detail=False)
     def create(self, request, username):  # Inference
