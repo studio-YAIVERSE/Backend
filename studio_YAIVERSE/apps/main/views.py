@@ -31,6 +31,7 @@ class Object3DModelViewSet(
         if instance.file:
             file_handle = instance.file.open()
             response = FileResponse(file_handle, content_type='whatever')
+            response['Access-Control-Allow-Origin'] = '*'  # CORS
             response['Content-Length'] = instance.file.size
             response['Content-Disposition'] = 'attachment; filename="%s"' % instance.file.name
             return response
