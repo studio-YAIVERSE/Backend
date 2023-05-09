@@ -1,4 +1,3 @@
-from django.shortcuts import resolve_url
 from rest_framework import serializers
 
 from .models import Object3D
@@ -10,10 +9,10 @@ class Object3DSerializer(serializers.ModelSerializer):
     thumbnail = serializers.SerializerMethodField()
 
     def get_file(self, obj):  # NOQA
-        return resolve_url(obj.file.url)
+        return obj.file.url
 
     def get_thumbnail(self, obj):  # NOQA
-        return resolve_url(obj.thumbnail.url)
+        return obj.thumbnail.url
 
     class Meta:
         model = Object3D

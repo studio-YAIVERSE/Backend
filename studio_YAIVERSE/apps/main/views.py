@@ -88,18 +88,12 @@ class Object3DModelViewSet(
 
     @action(detail=False)
     def list(self, request, username):
-
         queryset = self.filter_queryset(self.get_queryset())
-
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = self.get_serializer(queryset, many=True)
-        print(serializer.data)
-        return Response(serializer.data)
-        # return super().list(request, username)
+        result = self.get_serializer(queryset, many=True).data
+        for obj in result:
+            obj["thumbnail_uri"] = request.build_absolute_uri(obj["thumbnail_uri"])
+            obj["file_uri"] = request.build_absolute_uri(obj["file_uri"])
+        return Response(result)
 
     @action(methods=["POST"], detail=True)
     def destroy(self, request, username, name):
