@@ -5,7 +5,11 @@ from .models import Object3D
 
 class Object3DSerializer(serializers.ModelSerializer):
 
+    file = serializers.SerializerMethodField()
     thumbnail = serializers.SerializerMethodField()
+
+    def get_file(self, obj):  # NOQA
+        return obj.file.url
 
     def get_thumbnail(self, obj):  # NOQA
         return obj.thumbnail.url
