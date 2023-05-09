@@ -91,8 +91,8 @@ class Object3DModelViewSet(
         queryset = self.filter_queryset(self.get_queryset())
         result = self.get_serializer(queryset, many=True).data
         for obj in result:
-            obj["thumbnail_uri"] = request.build_absolute_uri(obj["thumbnail_uri"])
-            obj["file_uri"] = request.build_absolute_uri(obj["file_uri"])
+            obj["thumbnail"] = request.build_absolute_uri(obj["thumbnail"])
+            obj["file"] = request.build_absolute_uri(obj["file"])
         return Response(result)
 
     @action(methods=["POST"], detail=True)
