@@ -88,7 +88,18 @@ class Object3DModelViewSet(
 
     @action(detail=False)
     def list(self, request, username):
-        return super().list(request, username)
+
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        print(serializer.data)
+        return Response(serializer.data)
+        # return super().list(request, username)
 
     @action(methods=["POST"], detail=True)
     def destroy(self, request, username, name):
