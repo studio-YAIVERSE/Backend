@@ -45,7 +45,7 @@ class Object3DModelCreationViews(GenericViewSet):
         instance.without_effect_thumbnail = File(infer_result.thumbnail, name="{}_0.png".format(instance.name))
         instance.save()
         result = dict(serializer.data)
-        result["thumbnail_uri"] = resolve_url(instance.thumbnail_uri)
+        result["thumbnail_uri"] = request.build_absolute_uri(instance.thumbnail_uri)
         return Response(result, status=status.HTTP_201_CREATED)
 
     @action(methods=["GET"], detail=True)
@@ -59,7 +59,7 @@ class Object3DModelCreationViews(GenericViewSet):
         instance.save()
         data = {
             "toggle": instance.toggle,
-            "thumbnail_uri": instance.thumbnail_uri,
+            "thumbnail_uri": request.build_absolute_uri(instance.thumbnail_uri),
         }
         return Response(data, status=status.HTTP_200_OK)
 
