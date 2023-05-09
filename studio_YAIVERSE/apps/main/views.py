@@ -8,22 +8,70 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from django.contrib.auth.models import User
 
+from . import serializers as s
 from .models import Object3D
-from .serializers import Object3DSerializer, Object3DCreation, Object3DRetrieve
-
 from .pytorch import inference
+
+
+class Object3DModelCreationViews(GenericViewSet):
+
+    queryset = Object3D.objects.all()
+
+    def get_serializer_class(self):
+        if self.action == "create_initial":
+            return s.Object3DCreation
+        elif self.action == "toggle_effect":
+            return s.Object3DToggleEffectSerializer
+        else:
+            raise Http404
+
+    @action(methods=["POST"], detail=False)
+    def create_initial(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        queryset = Object3D.objects.filter(user__username=self.kwargs["username"], name=serializer.data["name"])
+        if queryset.exists():
+            try:
+                instance = queryset.get()
+            except Object3D.MultipleObjectsReturned:
+                raise ValidationError("Multiple objects with the same name")
+        else:
+            instance = Object3D(name=serializer.data["name"], description=serializer.data["description"])
+            instance.user = get_object_or_404(User, username=self.kwargs["username"])
+        infer_result = inference(serializer.data["name"], serializer.data["text"])
+        instance.with_effect_file = File(infer_result.file, name="{}_1.glb".format(instance.name))
+        instance.with_effect_thumbnail = File(infer_result.thumbnail, name="{}_1.png".format(instance.name))
+        instance.without_effect_file = File(infer_result.file, name="{}_0.glb".format(instance.name))
+        instance.without_effect_thumbnail = File(infer_result.thumbnail, name="{}_0.png".format(instance.name))
+        instance.save()
+        result = dict(serializer.data)
+        result["thumbnail_uri"] = resolve_url(instance.thumbnail_uri)
+        return Response(result, status=status.HTTP_201_CREATED)
+
+    @action(methods=["GET"], detail=True)
+    def toggle_effect(self, request, *args, **kwargs):
+        instance = get_object_or_404(
+                self.get_queryset(),
+                user__username=self.kwargs["username"],
+                name=self.kwargs["name"]
+            )
+        instance.toggle = not instance.toggle
+        instance.save()
+        data = {
+            "toggle": instance.toggle,
+            "thumbnail_uri": instance.thumbnail_uri,
+        }
+        return Response(data, status=status.HTTP_200_OK)
 
 
 class Object3DModelViewSet(
     mixins.ListModelMixin,
-    mixins.CreateModelMixin,
     mixins.RetrieveModelMixin,
     mixins.DestroyModelMixin,
     GenericViewSet
 ):
 
     queryset = Object3D.objects.all()
-    serializer_class = Object3DSerializer
 
     @action(detail=True)
     def retrieve(self, request, username, name) -> FileResponse:
@@ -42,27 +90,18 @@ class Object3DModelViewSet(
     def list(self, request, username):
         return super().list(request, username)
 
-    @action(methods=["POST"], detail=False)
-    def create(self, request, username):  # Inference
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        result = serializer.data
-        result["thumbnail_uri"] = serializer.thumbnail_uri
-        return Response(result, status=status.HTTP_201_CREATED, headers=headers)
-
     @action(methods=["POST"], detail=True)
     def destroy(self, request, username, name):
         return super().destroy(request, username, name)
 
     def get_serializer_class(self):
         if self.action == "retrieve":
-            return Object3DRetrieve
-        elif self.action == "create":
-            return Object3DCreation
-        else:  # default
-            return self.serializer_class
+            return s.Object3DRetrieve
+        elif self.action == "list":
+            return s.Object3DSerializer
+        else:
+            print(self.action, "#"*100)
+            raise Http404
 
     def get_object(self):
         return get_object_or_404(
@@ -75,19 +114,3 @@ class Object3DModelViewSet(
         if self.action == "list":
             return get_list_or_404(queryset, user__username=self.kwargs["username"])
         return super().filter_queryset(queryset)
-
-    def perform_create(self, serializer):
-        queryset = Object3D.objects.filter(user__username=self.kwargs["username"], name=serializer.data["name"])
-        if queryset.exists():
-            try:
-                instance = queryset.get()
-            except Object3D.MultipleObjectsReturned:
-                raise ValidationError("Multiple objects with the same name")
-        else:
-            instance = Object3D(name=serializer.data["name"], description=serializer.data["description"])
-            instance.user = get_object_or_404(User, username=self.kwargs["username"])
-        infer_result = inference(serializer.data["name"], serializer.data["text"])
-        instance.file = File(infer_result.file, name="{}.glb".format(instance.name))
-        instance.thumbnail = File(infer_result.thumbnail, name="{}.png".format(instance.name))
-        instance.save()
-        serializer.thumbnail_uri = resolve_url(instance.thumbnail.url)
