@@ -50,6 +50,10 @@ def fetch_secret():
             raise RuntimeError("secret.json is required for gunicorn production environment.") from exc
 
 
+fetch_secret()
+del fetch_secret
+
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY: str  # type: str
 
