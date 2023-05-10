@@ -26,31 +26,28 @@ secret.json example using mysql database:
 
 from .base import *
 
-try:
 
-    with open(BASE_DIR / 'secret.json', 'r') as fd:
-
-        import json
-        globals().update(json.load(fd))
-
-        try:
-            DATABASES  # noqa
-        except NameError:
-            DATABASES = {
-                'default': {
-                    'ENGINE': 'django.db.backends.sqlite3',
-                    'NAME': BASE_DIR / 'db.sqlite3',
-                }
-            }
-            print("\nCannot resolve database, using default sqlite db...\n")
-
-except FileNotFoundError as exc:
-
-    raise RuntimeError(
-        "secret.json is required for gunicorn production environment."
-    ) from exc
-
-del fd, json
+def fetch_secret():
+    import json
+    defaults = {
+        'ALLOWED_HOSTS': ['*'],
+        'DATABASES': {'default': {'ENGINE': 'django.db.backends.sqlite3',
+                                  'NAME': str(BASE_DIR / 'db.sqlite3')}},
+        'SECRET_KEY': 'warning!-overwrite-this-secret-key-to-your-own-value'
+    }
+    try:
+        with open(BASE_DIR / 'secret.json', 'r') as fd:
+            globals().update(json.load(fd))
+            globals().setdefault('DATABASES', defaults['DATABASES'])
+    except FileNotFoundError as exc:
+        if input(
+                "[Error] In Production mode, secret.json is required but not found. do you want to create it? [y/n]: "
+        ).lower() in ('y', 'yes'):
+            with open(BASE_DIR / 'secret.json', 'w') as fd:
+                json.dump(defaults, fd, indent=2)
+            globals().update(defaults)
+        else:
+            raise RuntimeError("secret.json is required for gunicorn production environment.") from exc
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -66,14 +63,3 @@ ALLOWED_HOSTS: list  # type: list[str]
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
 DATABASES: dict  # type: dict[str, dict[str, str]]
-
-
-# Session Settings
-
-SESSION_COOKIE_AGE = 86400  # default is 1209600 (two weeks)
-
-# SESSION_COOKIE_NAME = 'cookie-name'
-
-SESSION_COOKIE_SECURE = True  # for https
-
-CSRF_COOKIE_SECURE = True  # for https
