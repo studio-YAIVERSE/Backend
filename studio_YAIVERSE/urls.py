@@ -29,12 +29,10 @@ urlpatterns += [
     path('v1/redoc/', schema_view_v1.with_ui('redoc', cache_timeout=0), name='schema-redoc-v1'),
 ]
 
-urlpatterns += [
-    path('admin/', admin.site.urls)
-]
 
 if settings.DEBUG:
     from django.conf.urls.static import static
+    urlpatterns += [path('admin/', admin.site.urls)]
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 

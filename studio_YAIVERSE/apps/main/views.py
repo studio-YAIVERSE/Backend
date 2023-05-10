@@ -1,11 +1,13 @@
-from django.shortcuts import get_list_or_404, get_object_or_404, Http404, resolve_url
+from django.shortcuts import get_list_or_404, get_object_or_404, Http404
 from django.core.files import File
 from django.http import FileResponse
 from rest_framework import status
-from rest_framework.viewsets import GenericViewSet, mixins
 from rest_framework.decorators import action
+from rest_framework.viewsets import GenericViewSet
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from drf_yasg.utils import swagger_auto_schema, no_body
+from drf_yasg.openapi import Schema, TYPE_FILE
 from django.contrib.auth.models import User
 
 from . import serializers as s
@@ -13,7 +15,7 @@ from .models import Object3D
 from .pytorch import inference
 
 
-class Object3DModelCreationViews(GenericViewSet):
+class Object3DModelViewSet(GenericViewSet):
 
     queryset = Object3D.objects.all()
 
@@ -22,8 +24,37 @@ class Object3DModelCreationViews(GenericViewSet):
             return s.Object3DCreation
         elif self.action == "toggle_effect":
             return s.Object3DToggleEffectSerializer
-        else:
-            raise Http404
+        elif self.action == "list":
+            return s.Object3DSerializer
+        raise Http404
+
+    @swagger_auto_schema(method="GET", request_body=no_body, responses={200: Schema(type=TYPE_FILE)})
+    @action(methods=["GET"], detail=True)
+    def retrieve(self, request, username, name):  # NOQA
+        instance = self.get_object()
+        if instance.file:
+            file_handle = instance.file.open()
+            response = FileResponse(file_handle, content_type='whatever')
+            response['Access-Control-Allow-Origin'] = '*'  # CORS
+            response['Content-Length'] = instance.file.size
+            response['Content-Disposition'] = 'attachment; filename="%s"' % instance.file.name
+            return response
+        raise Http404
+
+    @action(methods=["GET"], detail=False)
+    def list(self, request, username):  # NOQA
+        queryset = self.filter_queryset(self.get_queryset())
+        result = self.get_serializer(queryset, many=True).data
+        for obj in result:
+            obj["thumbnail"] = request.build_absolute_uri(obj["thumbnail"])
+            obj["file"] = request.build_absolute_uri(obj["file"])
+        return Response(result)
+
+    @swagger_auto_schema(method='post', request_body=no_body, responses={204: 'success'})
+    @action(methods=["POST"], detail=True)
+    def destroy(self, request, username, name):  # NOQA
+        self.get_object().delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(methods=["POST"], detail=False)
     def create_initial(self, request, *args, **kwargs):
@@ -63,57 +94,14 @@ class Object3DModelCreationViews(GenericViewSet):
         }
         return Response(data, status=status.HTTP_200_OK)
 
-
-class Object3DModelViewSet(
-    mixins.ListModelMixin,
-    mixins.RetrieveModelMixin,
-    mixins.DestroyModelMixin,
-    GenericViewSet
-):
-
-    queryset = Object3D.objects.all()
-
-    @action(detail=True)
-    def retrieve(self, request, username, name) -> FileResponse:
-        instance = self.get_object()
-        if instance.file:
-            file_handle = instance.file.open()
-            response = FileResponse(file_handle, content_type='whatever')
-            response['Access-Control-Allow-Origin'] = '*'  # CORS
-            response['Content-Length'] = instance.file.size
-            response['Content-Disposition'] = 'attachment; filename="%s"' % instance.file.name
-            return response
-        else:
-            raise Http404("No file")
-
-    @action(detail=False)
-    def list(self, request, username):
-        queryset = self.filter_queryset(self.get_queryset())
-        result = self.get_serializer(queryset, many=True).data
-        for obj in result:
-            obj["thumbnail"] = request.build_absolute_uri(obj["thumbnail"])
-            obj["file"] = request.build_absolute_uri(obj["file"])
-        return Response(result)
-
-    @action(methods=["POST"], detail=True)
-    def destroy(self, request, username, name):
-        return super().destroy(request, username, name)
-
-    def get_serializer_class(self):
-        if self.action == "retrieve":
-            return s.Object3DRetrieve
-        elif self.action == "list":
-            return s.Object3DSerializer
-        else:
-            print(self.action, "#"*100)
-            raise Http404
-
     def get_object(self):
-        return get_object_or_404(
+        obj = get_object_or_404(
             self.get_queryset(),
             user__username=self.kwargs["username"],
             name=self.kwargs["name"]
         )
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     def filter_queryset(self, queryset):
         if self.action == "list":
