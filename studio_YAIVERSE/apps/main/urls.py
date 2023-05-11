@@ -16,11 +16,24 @@ urlpatterns = [
         Object3DModelViewSet.as_view({'post': 'destroy'}),
         name="object_3d_delete"),
     path(
-        "create/<str:username>/",
-        Object3DModelViewSet.as_view({'post': 'create_initial'}),
+        "create/text/<str:username>/",
+        Object3DModelViewSet.as_view({'post': 'create_by_text'}),
+        name="object_3d_create"),
+    path(
+        "create/image/<str:username>/",
+        Object3DModelViewSet.as_view({'post': 'create_by_image'}),
         name="object_3d_create"),
     path(
         "toggle_effect/<str:username>/<str:name>/",
         Object3DModelViewSet.as_view({'get': 'toggle_effect'}),
         name="object_3d_toggle_effect"),
+]
+
+
+# TODO: REMOVE (legacy url)
+urlpatterns += [
+    path(
+        "create/<str:username>/",
+        Object3DModelViewSet.as_view({'post': 'create_by_text'}),
+        name="object_3d_create"),
 ]

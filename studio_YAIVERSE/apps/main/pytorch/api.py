@@ -21,6 +21,11 @@ inference_result = namedtuple("inference_result", ["file", "thumbnail"])
 
 
 @inference_mode()
+def inference_image(name: "str", image: "Any" = None, extension: "Optional[str]" = "glb") -> inference_result:
+    return inference_text(name, image, extension)
+
+
+@inference_mode()
 def inference_text(name: "str", text: "Optional[str]" = None, extension: "Optional[str]" = "glb") -> inference_result:
 
     print("Running inference({})".format(", ".join("{0}={1!r}".format(*i) for i in locals().items())))
@@ -78,4 +83,4 @@ def _dummy_inference_data() -> "Tuple[Optional[bytes], Optional[bytes]]":
 
 def dummy_inference() -> inference_result:
     file_data, thumbnail_data = _dummy_inference_data()
-    return inference_result(file=io.BytesIO(file_data), thumbnail=thumbnail_data)
+    return inference_result(file=io.BytesIO(file_data), thumbnail=io.BytesIO(thumbnail_data))
