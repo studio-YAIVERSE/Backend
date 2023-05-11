@@ -117,8 +117,8 @@ pt_path = './final_test_copy'
 
 def mapping_checkpoint(clip_loss: "CLIPLoss", clip_map: "dict", text_or_image: "Any", is_image: "bool"):
     feat = (clip_loss.preprocessing_image if is_image else clip_loss.get_text_features)(text_or_image)
-    key_src = min((k, clip_loss.compute_loss(v[0], feat) for k, v in clip_map.items()), key=itemgetter(1))[0]
-    key_dst = min((k, clip_loss.compute_loss(v, feat) for k, v in clip_map[key_src][1].items()), key=itemgetter(1))[0]
+    key_src = min(((k, clip_loss.compute_loss(v[0], feat)) for k, v in clip_map.items()), key=itemgetter(1))[0]
+    key_dst = min(((k, clip_loss.compute_loss(v, feat)) for k, v in clip_map[key_src][1].items()), key=itemgetter(1))[0]
     return key_src, key_dst
     # filename = key_src + '_' + key_dst  # car_rustycar
     # fin_path = os.path.join(pt_path, filename, filename + '.pt')  # ./yaiverse/final/car_rustycar/car_rustycar.pt
