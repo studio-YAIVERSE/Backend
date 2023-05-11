@@ -4,10 +4,10 @@ import torch
 from collections import namedtuple
 from functools import lru_cache
 
-from .nn import using_generator_ema, get_device
+from .nn import using_generator_ema, using_clip_loss, using_clip_map, get_device
 from .utils import inference_mode
 from .functions import (
-    inference_core_logic,
+    inference_core_logic, mapping_checkpoint,
     thumbnail_to_pil, postprocess_texture_map, format_mesh_obj, format_material,
     convert_obj_to_extension
 )
@@ -33,6 +33,9 @@ def inference_text(name: "str", text: "Optional[str]" = None, extension: "Option
     device = get_device()
     if device is None:
         return dummy_inference()
+
+    with using_clip_loss(), using_clip_map() as (loss, clip_map):
+        print(mapping_checkpoint(loss, clip_map, text, False))
 
     with using_generator_ema() as g_ema:
         geo_z = torch.randn([1, g_ema.z_dim], device=device)

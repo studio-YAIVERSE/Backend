@@ -8,10 +8,12 @@ import cv2
 import torch
 import nvdiffrast.torch as dr
 import trimesh
+from operator import itemgetter
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import *
+    from ..pytorch_deps.clip_loss import CLIPLoss
     from training.networks_get3d import GeneratorDMTETMesh
 
 
@@ -108,6 +110,19 @@ def thumbnail_to_pil(tensor: "torch.Tensor") -> "PIL.Image.Image":
     img = tensor.detach().cpu().numpy().astype(np.float32)
     img = np.rint(img).clip(0, 255).astype(np.uint8).squeeze(0).transpose(1, 2, 0)
     return PIL.Image.fromarray(img, 'RGB')
+
+
+pt_path = './final_test_copy'
+
+
+def mapping_checkpoint(clip_loss: "CLIPLoss", clip_map: "dict", text_or_image: "Any", is_image: "bool"):
+    feat = (clip_loss.preprocessing_image if is_image else clip_loss.get_text_features)(text_or_image)
+    key_src = min((k, clip_loss.compute_loss(v[0], feat) for k, v in clip_map.items()), key=itemgetter(1))[0]
+    key_dst = min((k, clip_loss.compute_loss(v, feat) for k, v in clip_map[key_src][1].items()), key=itemgetter(1))[0]
+    return key_src, key_dst
+    # filename = key_src + '_' + key_dst  # car_rustycar
+    # fin_path = os.path.join(pt_path, filename, filename + '.pt')  # ./yaiverse/final/car_rustycar/car_rustycar.pt
+    # return fin_path
 
 
 def inference_core_logic(
