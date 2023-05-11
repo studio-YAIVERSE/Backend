@@ -1,8 +1,11 @@
+import sys
+import threading
+from contextlib import contextmanager
 from functools import lru_cache
 from tqdm.auto import trange
 from django.conf import settings
-from .utils import at_working_directory
 
+from .utils import at_working_directory
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -10,8 +13,19 @@ if TYPE_CHECKING:
     from typing import Optional
     from training.networks_get3d import GeneratorDMTETMesh
 
+# NOTE: In this project we support only single-GPU runtime,
+# so we can use global lock for all GPU-related operations.
+# If you want to support multi-GPU runtime, you should implement
+# extra allocating logic for each GPU.
+G_EMA_LOCK = threading.Lock()
 
 G_EMA: "Optional[GeneratorDMTETMesh]" = None
+
+
+@contextmanager
+def using_generator_ema():
+    with G_EMA_LOCK:
+        yield G_EMA
 
 
 @lru_cache(maxsize=None)
@@ -20,11 +34,6 @@ def get_device() -> "Optional[torch.device]":
         return
     import torch
     return torch.device(settings.TORCH_DEVICE)
-
-
-def get_generator_ema() -> "GeneratorDMTETMesh":
-    assert G_EMA is not None
-    return G_EMA
 
 
 def construct_all() -> None:
@@ -98,3 +107,10 @@ def construct_all() -> None:
 
     print("Successfully loaded model.")
     G_EMA = generator_ema
+
+
+nn_module = type(sys)(__name__)
+nn_module.using_generator_ema = using_generator_ema
+nn_module.construct_all = construct_all
+nn_module.get_device = get_device
+sys.modules[__name__] = nn_module
