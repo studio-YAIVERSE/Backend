@@ -28,12 +28,3 @@ urlpatterns = [
         Object3DModelViewSet.as_view({'get': 'toggle_effect'}),
         name="object_3d_toggle_effect"),
 ]
-
-
-# TODO: REMOVE (legacy url)
-urlpatterns += [
-    path(
-        "create/<str:username>/",
-        Object3DModelViewSet.as_view({'post': 'create_by_text'}),
-        name="object_3d_create"),
-]

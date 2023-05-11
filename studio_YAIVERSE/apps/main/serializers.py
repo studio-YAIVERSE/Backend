@@ -7,22 +7,16 @@ class Object3DSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Object3D
-        fields = [
-            'name', 'description', 'toggle',
-            'file', 'thumbnail', 'thumbnail_uri',
-        ]
+        fields = ['name', 'description', 'toggle', 'file', 'thumbnail']
 
     file = serializers.SerializerMethodField()
     thumbnail = serializers.SerializerMethodField()
-    thumbnail_uri = serializers.SerializerMethodField()
 
     def get_file(self, obj):  # NOQA
         return obj.file.url
 
     def get_thumbnail(self, obj):  # NOQA
         return obj.thumbnail.url
-
-    get_thumbnail_uri = get_thumbnail
 
 
 class Object3DCreationByText(serializers.Serializer):
