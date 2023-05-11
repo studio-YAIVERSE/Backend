@@ -4,7 +4,7 @@ import torch
 from collections import namedtuple
 from functools import lru_cache
 
-from .nn import get_generator_ema, get_device
+from .nn import using_generator_ema, get_device
 from .utils import inference_mode
 from .functions import (
     inference_core_logic,
@@ -21,6 +21,11 @@ inference_result = namedtuple("inference_result", ["file", "thumbnail"])
 
 
 @inference_mode()
+def inference_image(name: "str", image: "Any" = None, extension: "Optional[str]" = "glb") -> inference_result:
+    return inference_text(name, image, extension)
+
+
+@inference_mode()
 def inference_text(name: "str", text: "Optional[str]" = None, extension: "Optional[str]" = "glb") -> inference_result:
 
     print("Running inference({})".format(", ".join("{0}={1!r}".format(*i) for i in locals().items())))
@@ -29,17 +34,14 @@ def inference_text(name: "str", text: "Optional[str]" = None, extension: "Option
     if device is None:
         return dummy_inference()
 
-    g_ema = get_generator_ema()
-
-    geo_z = torch.randn([1, g_ema.z_dim], device=device)
-    tex_z = torch.randn([1, g_ema.z_dim], device=device)
-
-    c_to_compute_w_avg = None
-    g_ema.update_w_avg(c_to_compute_w_avg)
-
-    generated_thumbnail, generated_mesh = inference_core_logic(
-        g_ema, geo_z=geo_z, tex_z=tex_z, c=None, truncation_psi=0.7
-    )
+    with using_generator_ema() as g_ema:
+        geo_z = torch.randn([1, g_ema.z_dim], device=device)
+        tex_z = torch.randn([1, g_ema.z_dim], device=device)
+        c_to_compute_w_avg = None
+        g_ema.update_w_avg(c_to_compute_w_avg)
+        generated_thumbnail, generated_mesh = inference_core_logic(
+            g_ema, geo_z=geo_z, tex_z=tex_z, c=None, truncation_psi=0.7
+        )
 
     img, _ = generated_thumbnail
     rgb_img = img[:, :3]
@@ -78,4 +80,4 @@ def _dummy_inference_data() -> "Tuple[Optional[bytes], Optional[bytes]]":
 
 def dummy_inference() -> inference_result:
     file_data, thumbnail_data = _dummy_inference_data()
-    return inference_result(file=io.BytesIO(file_data), thumbnail=thumbnail_data)
+    return inference_result(file=io.BytesIO(file_data), thumbnail=io.BytesIO(thumbnail_data))
