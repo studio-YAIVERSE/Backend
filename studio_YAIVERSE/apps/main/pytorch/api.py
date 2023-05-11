@@ -4,10 +4,12 @@ import torch
 from collections import namedtuple
 from functools import lru_cache
 
-from .nn import using_generator_ema, get_device
+from django.conf import settings
+
+from .nn import using_generator_ema, get_clip_loss, get_clip_map, get_device
 from .utils import inference_mode
 from .functions import (
-    inference_core_logic,
+    inference_core_logic, mapping_checkpoint, load_nada_checkpoint_from_keys,
     thumbnail_to_pil, postprocess_texture_map, format_mesh_obj, format_material,
     convert_obj_to_extension
 )
@@ -21,20 +23,24 @@ inference_result = namedtuple("inference_result", ["file", "thumbnail"])
 
 
 @inference_mode()
-def inference_image(name: "str", image: "Any" = None, extension: "Optional[str]" = "glb") -> inference_result:
-    return inference_text(name, image, extension)
+def inference(name: "str", target: "Union[str, io.BytesIO]", extension: "Optional[str]" = "glb") -> inference_result:
 
-
-@inference_mode()
-def inference_text(name: "str", text: "Optional[str]" = None, extension: "Optional[str]" = "glb") -> inference_result:
-
-    print("Running inference({})".format(", ".join("{0}={1!r}".format(*i) for i in locals().items())))
+    log_name = "inference({})".format(", ".join("{0}={1!r}".format(*i) for i in locals().items()))
+    print(log_name, ": init")
 
     device = get_device()
     if device is None:
         return dummy_inference()
 
+    clip_loss = get_clip_loss()
+    clip_map = get_clip_map()
+    key_src_key_dst = mapping_checkpoint(clip_loss, clip_map, target)
+    print(log_name, ": loading checkpoint from", *key_src_key_dst)
+
+    g_ema_checkpoint = load_nada_checkpoint_from_keys(settings.NADA_WEIGHT_DIR, device, *key_src_key_dst)
+
     with using_generator_ema() as g_ema:
+        g_ema.load_state_dict(g_ema_checkpoint)
         geo_z = torch.randn([1, g_ema.z_dim], device=device)
         tex_z = torch.randn([1, g_ema.z_dim], device=device)
         c_to_compute_w_avg = None
@@ -50,7 +56,6 @@ def inference_text(name: "str", text: "Optional[str]" = None, extension: "Option
     thumbnail_img.save(thumbnail, format="PNG")
 
     (mesh_v,), (mesh_f,), (all_uvs,), (all_mesh_tex_idx,), (tex_map,) = generated_mesh
-
     mesh_obj = format_mesh_obj(
         mesh_v.data.cpu().numpy(),
         all_uvs.data.cpu().numpy(),

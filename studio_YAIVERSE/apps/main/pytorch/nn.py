@@ -3,69 +3,89 @@ import threading
 from contextlib import contextmanager
 from functools import lru_cache
 from tqdm.auto import trange
+import torch
 from django.conf import settings
 
+from ..pytorch_deps.clip_loss import CLIPLoss
 from .utils import at_working_directory
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    import torch
     from typing import Optional
     from training.networks_get3d import GeneratorDMTETMesh
-
-# NOTE: In this project we support only single-GPU runtime,
-# so we can use global lock for all GPU-related operations.
-# If you want to support multi-GPU runtime, you should implement
-# extra allocating logic for each GPU.
-G_EMA_LOCK = threading.Lock()
-
-G_EMA: "Optional[GeneratorDMTETMesh]" = None
-
-
-@contextmanager
-def using_generator_ema():
-    with G_EMA_LOCK:
-        yield G_EMA
 
 
 @lru_cache(maxsize=None)
 def get_device() -> "Optional[torch.device]":
     if not settings.TORCH_ENABLED:
         return
-    import torch
     return torch.device(settings.TORCH_DEVICE)
 
 
+# NOTE: In this project we support only single-GPU runtime,
+# so we can use global lock for all GPU-related operations.
+# If you want to support multi-GPU runtime, you should implement
+# extra allocating logic for each GPU.
+G_EMA_LOCK = threading.Lock()
+G_EMA_MODULE: "Optional[GeneratorDMTETMesh]" = None
+
+
+@contextmanager
+def using_generator_ema():
+    assert CONSTRUCTED
+    with G_EMA_LOCK:
+        yield G_EMA_MODULE
+
+
+CLIP_LOSS_MODULE: "Optional[CLIPLoss]" = None
+
+
+def get_clip_loss():
+    assert CONSTRUCTED
+    return CLIP_LOSS_MODULE
+
+
+CLIP_MAP: "dict[str, tuple[torch.Tensor, dict[str, torch.Tensor]]]" = {}
+
+
+def get_clip_map():
+    assert CONSTRUCTED
+    return CLIP_MAP
+
+
+CONSTRUCTED = False
+
+
 def construct_all() -> None:
+    global G_EMA_MODULE, CLIP_LOSS_MODULE, CLIP_MAP, CONSTRUCTED
 
-    global G_EMA
-
+    # Condition Check
     from .setup import setup
     setup()
-
     if not settings.TORCH_ENABLED:
         return
-
-    if G_EMA is not None:
+    if G_EMA_MODULE is not None:
         return
 
-    import torch
-    from training.networks_get3d import GeneratorDMTETMesh
+    # TORCH: init device
+    device = get_device()
 
-    device = torch.device(settings.TORCH_DEVICE)
+    # CLIP: Init
+    print("Initializing CLIP Loss for Inference...")
+    from ..pytorch_deps.clip_loss import CLIPLoss
+    clip_loss = CLIPLoss(device).eval().requires_grad_(False)
 
-    # Performance-related toggles.
+    # GET3D: Init
+    print("Initializing GET3D Model for Inference...")
     if settings.MODEL_OPTS["fp32"]:
         extra_kwargs = dict()
         extra_kwargs["num_fp16_res"] = 0
         extra_kwargs["conv_clamp"] = None
     else:
         extra_kwargs = {}
-
-    print("Initializing Model for Inference...")
-
     with at_working_directory(settings.BASE_DIR / "GET3D"):
-        G = GeneratorDMTETMesh(
+        from training.networks_get3d import GeneratorDMTETMesh
+        generator_ema = GeneratorDMTETMesh(
             c_dim=0,
             img_resolution=settings.TORCH_RESOLUTION,
             img_channels=3,
@@ -92,12 +112,18 @@ def construct_all() -> None:
             n_implicit_layer=settings.MODEL_OPTS["n_implicit_layer"],
             **extra_kwargs
         )
-    generator_ema = G.eval().requires_grad_(False).to(device)  # use same object
+    generator_ema.eval().requires_grad_(False).to(device)
 
+    # GET3D: Load State Dict
     print("Loading state dict from: {}".format(settings.TORCH_WEIGHT_PATH))
     model_state_dict = torch.load(settings.TORCH_WEIGHT_PATH, map_location=device)
     generator_ema.load_state_dict(model_state_dict['G_ema'], strict=True)
 
+    # Load CLIP-feature Map
+    print("Loading CLIP-feature Mapping from: {}".format(settings.CLIP_MAP_PATH))
+    clip_map = torch.load(settings.CLIP_MAP_PATH, map_location=device)
+
+    # GET3D: Warm Up
     total = settings.TORCH_WARM_UP_ITER
     geo_z = torch.randn([1, generator_ema.z_dim], device=device)
     tex_z = torch.randn([1, generator_ema.z_dim], device=device)
@@ -105,12 +131,19 @@ def construct_all() -> None:
         generator_ema.update_w_avg(None)
         generator_ema.generate_3d_mesh(geo_z=geo_z, tex_z=tex_z, c=None, truncation_psi=0.7)
 
-    print("Successfully loaded model.")
-    G_EMA = generator_ema
+    # Complete
+    print("Successfully loaded models.")
+    G_EMA_MODULE = generator_ema
+    CLIP_LOSS_MODULE = clip_loss
+    CLIP_MAP = clip_map
+    CONSTRUCTED = True
 
 
+# Encapsulation
 nn_module = type(sys)(__name__)
-nn_module.using_generator_ema = using_generator_ema
-nn_module.construct_all = construct_all
 nn_module.get_device = get_device
+nn_module.using_generator_ema = using_generator_ema
+nn_module.get_clip_loss = get_clip_loss
+nn_module.get_clip_map = get_clip_map
+nn_module.construct_all = construct_all
 sys.modules[__name__] = nn_module

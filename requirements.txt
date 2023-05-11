@@ -38,3 +38,6 @@ opencv-python==4.5.4.58
 
 -f https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-1.9.0_cu111.html
 kaolin==0.13.0
+
+ftfy
+git+https://github.com/openai/CLIP.git

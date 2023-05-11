@@ -27,7 +27,11 @@ TORCH_WITHOUT_CUSTOM_OPS_COMPILE = bool(int(_os.getenv("TORCH_WITHOUT_CUSTOM_OPS
 
 TORCH_DEVICE = _os.getenv("TORCH_DEVICE", "cuda:0")
 
-TORCH_WEIGHT_PATH = _os.getenv("TORCH_WEIGHT_PATH", BASE_DIR / "weights/shapenet_car.pt")  # TODO
+TORCH_WEIGHT_PATH = _os.getenv("TORCH_WEIGHT_PATH", BASE_DIR / "weights/get3d/shapenet_car.pt")  # TODO
+
+NADA_WEIGHT_DIR = _os.getenv("NADA_WEIGHT_DIR", BASE_DIR / "weights/get3d_nada")
+
+CLIP_MAP_PATH = _os.getenv("CLIP_MAP_PATH", BASE_DIR / "weights/clip_map/clip_map.pt")
 
 MODEL_OPTS = {  # Compatible with script arguments
     'latent_dim': 512,

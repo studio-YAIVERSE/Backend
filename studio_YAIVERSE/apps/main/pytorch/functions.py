@@ -1,5 +1,6 @@
 import os
 import io
+import re
 import tempfile
 import zipfile
 import PIL.Image
@@ -8,10 +9,12 @@ import cv2
 import torch
 import nvdiffrast.torch as dr
 import trimesh
+from operator import itemgetter
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import *
+    from ..pytorch_deps.clip_loss import CLIPLoss
     from training.networks_get3d import GeneratorDMTETMesh
 
 
@@ -108,6 +111,24 @@ def thumbnail_to_pil(tensor: "torch.Tensor") -> "PIL.Image.Image":
     img = tensor.detach().cpu().numpy().astype(np.float32)
     img = np.rint(img).clip(0, 255).astype(np.uint8).squeeze(0).transpose(1, 2, 0)
     return PIL.Image.fromarray(img, 'RGB')
+
+
+def mapping_checkpoint(clip_loss: "CLIPLoss", clip_map: "dict", target: "Union[str, io.BytesIO]") -> "Tuple[str, str]":
+    if isinstance(target, io.BytesIO):
+        feat = clip_loss.preprocessing_image(target)
+    elif isinstance(target, str):
+        feat = clip_loss.get_text_features(target)
+    else:
+        raise TypeError(target)
+    key_src = min(((k, clip_loss.compute_loss(v[0], feat)) for k, v in clip_map.items()), key=itemgetter(1))[0]
+    key_dst = min(((k, clip_loss.compute_loss(v, feat)) for k, v in clip_map[key_src][1].items()), key=itemgetter(1))[0]
+    return key_src, key_dst
+
+
+def load_nada_checkpoint_from_keys(base_dir, device, key_src, key_dst):
+    ckpt = "{key_src}_{key_dst}.pt".format(key_src=re.sub(r'\s', '', key_src), key_dst=re.sub(r'\s', '', key_dst))
+    ckpt_full_path = os.path.join(base_dir, ckpt)
+    return torch.load(ckpt_full_path, map_location=device)["g_ema"]
 
 
 def inference_core_logic(
