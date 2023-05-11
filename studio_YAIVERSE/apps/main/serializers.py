@@ -20,14 +20,12 @@ class Object3DSerializer(serializers.ModelSerializer):
 
 
 class Object3DCreationByText(serializers.Serializer):
-
     name = serializers.CharField(max_length=32, required=True, help_text="3D Object 이름")
-    description = serializers.CharField(max_length=256, allow_blank=True, help_text="3D Object 설명")
-    text = serializers.CharField(help_text="3D Object 생성 prompt")
+    description = serializers.CharField(max_length=256, required=True, allow_blank=True, help_text="3D Object 설명")
+    text = serializers.CharField(required=True, allow_blank=False, help_text="3D Object 생성용 prompt text")
 
 
 class Object3DCreationByImage(serializers.Serializer):
-
     name = serializers.CharField(max_length=32, required=True, help_text="3D Object 이름")
-    description = serializers.CharField(max_length=256, allow_blank=True, help_text="3D Object 설명")
-    image = serializers.ImageField(required=True, help_text="3D Object 생성 target image")
+    description = serializers.CharField(max_length=256, required=True, allow_blank=True, help_text="3D Object 설명")
+    image = serializers.CharField(required=True, allow_blank=False, help_text="3D Object 생성용 base64-encoded 이미지")
