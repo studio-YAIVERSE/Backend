@@ -48,7 +48,7 @@ class Object3DModelViewSet(GenericViewSet):
     @action(methods=["POST"], detail=True)
     def destroy(self, request, *args, **kwargs):
         self.get_object().delete()
-        return self.build_response(request, status=HTTP_204_NO_CONTENT)
+        return self.build_response(status=HTTP_204_NO_CONTENT)
 
     @swagger_auto_schema(method="GET", request_body=no_body, responses={200: Object3DSerializer()})
     @action(methods=["GET"], detail=True)
