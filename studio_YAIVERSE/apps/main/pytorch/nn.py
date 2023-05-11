@@ -41,19 +41,17 @@ def using_generator_ema():
 CLIP_LOSS_MODULE: "Optional[CLIPLoss]" = None
 
 
-@contextmanager
-def using_clip_loss():
+def get_clip_loss():
     assert CONSTRUCTED
-    yield CLIP_LOSS_MODULE
+    return CLIP_LOSS_MODULE
 
 
 CLIP_MAP: "dict[str, tuple[torch.Tensor, dict[str, torch.Tensor]]]" = {}
 
 
-@contextmanager
-def using_clip_map():
+def get_clip_map():
     assert CONSTRUCTED
-    yield CLIP_MAP
+    return CLIP_MAP
 
 
 CONSTRUCTED = False
@@ -147,7 +145,7 @@ def construct_all() -> None:
 nn_module = type(sys)(__name__)
 nn_module.get_device = get_device
 nn_module.using_generator_ema = using_generator_ema
-nn_module.using_clip_loss = using_clip_loss
+nn_module.get_clip_loss = get_clip_loss
+nn_module.get_clip_map = get_clip_map
 nn_module.construct_all = construct_all
-nn_module.using_clip_map = using_clip_map
 sys.modules[__name__] = nn_module
