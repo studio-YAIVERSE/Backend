@@ -27,6 +27,15 @@ secret.json example using mysql database:
 from .base import *
 
 
+SECRET_KEY: str  # type: str
+
+DEBUG = False
+
+ALLOWED_HOSTS: list  # type: list[str]
+
+DATABASES: dict  # type: dict[str, dict[str, str]]
+
+
 def fetch_secret():
     import json
     defaults = {
@@ -52,18 +61,3 @@ def fetch_secret():
 
 fetch_secret()
 del fetch_secret
-
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY: str  # type: str
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
-
-ALLOWED_HOSTS: list  # type: list[str]
-
-
-# Database
-# https://docs.djangoproject.com/en/4.1/ref/settings/#databases
-
-DATABASES: dict  # type: dict[str, dict[str, str]]
