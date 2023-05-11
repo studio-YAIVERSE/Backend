@@ -8,15 +8,45 @@ import cv2
 import torch
 import nvdiffrast.torch as dr
 import trimesh
-from collections import namedtuple
-
-from .nn import get_generator_ema, get_device
-from .utils import inference_mode
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import *
     from training.networks_get3d import GeneratorDMTETMesh
+
+
+def convert_obj_to_extension(
+        name: "str",
+        mesh_obj: "str",
+        material: "Optional[str]" = None,
+        texture_map: "Optional[PIL.Image.Image]" = None,
+        extension: "Optional[str]" = "glb"
+) -> "io.BytesIO":
+    with tempfile.TemporaryDirectory() as tempdir:
+
+        mesh_obj_name = os.path.join(tempdir, name + '.obj')
+        with open(mesh_obj_name, 'w') as fp:
+            fp.write(mesh_obj)
+        material_name = os.path.join(tempdir, name + '.mtl')
+        if material is not None:
+            with open(material_name, 'w') as fp:
+                fp.write(material)
+        text_map_name = os.path.join(tempdir, name + '.png')
+        if texture_map is not None:
+            with open(text_map_name, 'wb') as fp:
+                texture_map.save(fp)
+
+        if extension:
+            return io.BytesIO(trimesh.load(mesh_obj_name).export(file_type=extension))
+        else:
+            file = io.BytesIO()
+            bundle = zipfile.ZipFile(file, "w")
+            bundle.write(mesh_obj_name, arcname=name + '.obj', compress_type=zipfile.ZIP_DEFLATED)
+            if material is not None:
+                bundle.write(material_name, arcname=name + '.mtl', compress_type=zipfile.ZIP_DEFLATED)
+            if texture_map is not None:
+                bundle.write(text_map_name, arcname=name + '.png', compress_type=zipfile.ZIP_DEFLATED)
+            return file
 
 
 def format_material(filename: "str") -> "str":
@@ -80,7 +110,7 @@ def thumbnail_to_pil(tensor: "torch.Tensor") -> "PIL.Image.Image":
     return PIL.Image.fromarray(img, 'RGB')
 
 
-def inference_logic(
+def inference_core_logic(
         g_ema: "GeneratorDMTETMesh",
         geo_z,
         tex_z,
@@ -253,67 +283,3 @@ def inference_logic(
     network_out = torch.cat(all_network_output, dim=0)
 
     yield mesh_v, mesh_f, all_uvs, all_mesh_tex_idx, network_out
-
-
-inference_result = namedtuple("inference_result", ["file", "thumbnail"])
-
-
-@inference_mode()
-def inference(name: "str", text: "Optional[str]" = None, extension: "Optional[str]" = "glb") -> inference_result:
-
-    print("Running inference({})".format(", ".join("{0}={1!r}".format(*i) for i in locals().items())))
-
-    device = get_device()
-    g_ema = get_generator_ema()
-
-    geo_z = torch.randn([1, g_ema.z_dim], device=device)
-    tex_z = torch.randn([1, g_ema.z_dim], device=device)
-
-    c_to_compute_w_avg = None
-    g_ema.update_w_avg(c_to_compute_w_avg)
-
-    generated_thumbnail, generated_mesh = inference_logic(
-        g_ema, geo_z=geo_z, tex_z=tex_z, c=None, truncation_psi=0.7
-    )
-
-    img, _ = generated_thumbnail
-    rgb_img = img[:, :3]
-    thumbnail_img = thumbnail_to_pil(rgb_img)
-    thumbnail = io.BytesIO()
-    thumbnail_img.save(thumbnail, format="PNG")
-
-    (mesh_v,), (mesh_f,), (all_uvs,), (all_mesh_tex_idx,), (tex_map,) = generated_mesh
-
-    mesh_obj = format_mesh_obj(
-        mesh_v.data.cpu().numpy(),
-        all_uvs.data.cpu().numpy(),
-        mesh_f.data.cpu().numpy(),
-        all_mesh_tex_idx.data.cpu().numpy(),
-        name
-    )
-    material = format_material(name)
-    texture_map = postprocess_texture_map(tex_map)
-
-    with tempfile.TemporaryDirectory() as tempdir:
-
-        mesh_obj_name = os.path.join(tempdir, name + '.obj')
-        with open(mesh_obj_name, 'w') as fp:
-            fp.write(mesh_obj)
-        material_name = os.path.join(tempdir, name + '.mtl')
-        with open(material_name, 'w') as fp:
-            fp.write(material)
-        text_map_name = os.path.join(tempdir, name + '.png')
-        with open(text_map_name, 'wb') as fp:
-            texture_map.save(fp)
-
-        if extension:
-            mesh = trimesh.load(mesh_obj_name)
-            file = io.BytesIO(mesh.export(file_type=extension))
-        else:
-            file = io.BytesIO()
-            bundle = zipfile.ZipFile(file, "w")
-            bundle.write(mesh_obj_name, arcname=name + '.obj', compress_type=zipfile.ZIP_DEFLATED)
-            bundle.write(material_name, arcname=name + '.mtl', compress_type=zipfile.ZIP_DEFLATED)
-            bundle.write(text_map_name, arcname=name + '.png', compress_type=zipfile.ZIP_DEFLATED)
-
-    return inference_result(file=file, thumbnail=thumbnail)

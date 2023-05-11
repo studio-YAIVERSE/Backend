@@ -12,7 +12,7 @@ from django.contrib.auth.models import User
 
 from . import serializers as s
 from .models import Object3D
-from .pytorch import inference
+from .pytorch import inference_text
 
 
 class Object3DModelViewSet(GenericViewSet):
@@ -69,7 +69,7 @@ class Object3DModelViewSet(GenericViewSet):
         else:
             instance = Object3D(name=serializer.data["name"], description=serializer.data["description"])
             instance.user = get_object_or_404(User, username=self.kwargs["username"])
-        infer_result = inference(serializer.data["name"], serializer.data["text"])
+        infer_result = inference_text(serializer.data["name"], serializer.data["text"])
         instance.with_effect_file = File(infer_result.file, name="{}_1.glb".format(instance.name))
         instance.with_effect_thumbnail = File(infer_result.thumbnail, name="{}_1.png".format(instance.name))
         instance.without_effect_file = File(infer_result.file, name="{}_0.glb".format(instance.name))
