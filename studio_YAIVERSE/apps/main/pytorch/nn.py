@@ -114,7 +114,8 @@ def construct_all() -> None:
             channel_max=settings.MODEL_OPTS["cmax"],
             n_implicit_layer=settings.MODEL_OPTS["n_implicit_layer"],
             **extra_kwargs
-        ).eval().requires_grad_(False)
+        )
+    generator_ema.eval().requires_grad_(False).to(device)
 
     # GET3D: Load State Dict
     print("Loading state dict from: {}".format(settings.TORCH_WEIGHT_PATH))
