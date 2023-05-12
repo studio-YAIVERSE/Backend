@@ -37,10 +37,18 @@ def using_generator_ema():
         yield G_EMA_MODULE
 
 
+CAMERA: "Optional[torch.Tensor]" = None
+
+
+def get_camera():
+    assert CONSTRUCTED
+    return CAMERA
+
+
 CLIP_LOSS_MODULE: "Optional[CLIPLoss]" = None
 
 
-def get_clip_loss():
+def get_clip_loss() -> "CLIPLoss":
     assert CONSTRUCTED
     return CLIP_LOSS_MODULE
 
@@ -48,7 +56,7 @@ def get_clip_loss():
 CLIP_MAP: "dict[str, tuple[torch.Tensor, dict[str, torch.Tensor]]]" = {}
 
 
-def get_clip_map():
+def get_clip_map() -> "dict[str, tuple[torch.Tensor, dict[str, torch.Tensor]]]":
     assert CONSTRUCTED
     return CLIP_MAP
 
@@ -56,8 +64,8 @@ def get_clip_map():
 CONSTRUCTED = False
 
 
-def construct_all() -> None:
-    global G_EMA_MODULE, CLIP_LOSS_MODULE, CLIP_MAP, CONSTRUCTED
+def construct_all():
+    global G_EMA_MODULE, CAMERA, CLIP_LOSS_MODULE, CLIP_MAP, CONSTRUCTED
 
     # Condition Check
     from .setup import setup
@@ -131,9 +139,13 @@ def construct_all() -> None:
         generator_ema.update_w_avg(None)
         generator_ema.generate_3d_mesh(geo_z=geo_z, tex_z=tex_z, c=None, truncation_psi=0.7)
 
+    # GET3D: Get Camera
+    camera = generator_ema.synthesis.generate_rotate_camera_list(n_batch=1)[5]
+
     # Complete
     print("Successfully loaded models.")
     G_EMA_MODULE = generator_ema
+    CAMERA = camera
     CLIP_LOSS_MODULE = clip_loss
     CLIP_MAP = clip_map
     CONSTRUCTED = True

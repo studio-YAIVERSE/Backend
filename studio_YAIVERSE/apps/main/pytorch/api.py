@@ -6,7 +6,7 @@ from functools import lru_cache
 
 from django.conf import settings
 
-from .nn import using_generator_ema, get_clip_loss, get_clip_map, get_device
+from .nn import using_generator_ema, get_camera, get_clip_loss, get_clip_map, get_device
 from .utils import inference_mode
 from .functions import (
     inference_core_logic,
@@ -39,6 +39,7 @@ def inference(name: "str", target: "Union[str, io.BytesIO]") -> inference_result
 
     print(log_name, ": loading checkpoint from", *key_src_key_dst)
     g_ema_checkpoint = load_nada_checkpoint_from_keys(settings.NADA_WEIGHT_DIR, device, *key_src_key_dst)
+    camera = get_camera()
 
     with using_generator_ema() as g_ema:
         g_ema.load_state_dict(g_ema_checkpoint)
@@ -46,10 +47,8 @@ def inference(name: "str", target: "Union[str, io.BytesIO]") -> inference_result
         print(log_name, ": run main inference")
         geo_z = torch.randn([1, g_ema.z_dim], device=device)
         tex_z = torch.randn([1, g_ema.z_dim], device=device)
-        c_to_compute_w_avg = None
-        g_ema.update_w_avg(c_to_compute_w_avg)
         generated_thumbnail, generated_mesh = inference_core_logic(
-            g_ema, geo_z=geo_z, tex_z=tex_z, c=None, truncation_psi=0.7
+            g_ema, geo_z=geo_z, tex_z=tex_z, c=None, camera=camera, truncation_psi=0.7
         )
 
     print(log_name, ": postprocessing")
