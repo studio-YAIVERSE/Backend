@@ -119,14 +119,100 @@ class CLIPLoss(torch.nn.Module):
     # js
     def preprocessing_image(self, img):
         preprocessed = self.clip_preprocess(Image.open(img)).unsqueeze(0).to(self.device)
+        encoding = self.model.encode_image(preprocessed)
+        encoding /= encoding.norm(dim=-1, keepdim=True)
 
-        return preprocessed
+        return encoding
 
     ##js - customed text_loss
     def compute_loss(self, source_class: torch.Tensor, target_class: torch.Tensor):
         # source_class : saved source embedding
 
         loss = F.cosine_similarity(source_class, target_class)
+        loss = 1 - loss
+        loss = torch.mean(loss)
+
+        return loss
+
+    # templated mean text feature
+    def templated_mean_text(self, source_class: str):
+        source_features = self.get_text_features(source_class).mean(dim=0, keepdim=True)
+
+        return source_features
+
+    # non templated text feature
+    def non_templated_text(self, source_class: str):
+        source_tokens = clip.tokenize(source_class).to(self.device)
+        source_features = self.encode_text(source_tokens)
+
+        return source_features
+
+    def origin_test_text(self, source_class: str, target_class: str):
+        # no mean
+        # source_tokens = clip.tokenize(source_class).to(self.device)
+        # source_features = self.encode_text(source_tokens).repeat(79,1)
+        # source_features = self.get_text_features(source_class)
+        # target_tokens = clip.tokenize(target_class).to(self.device)
+        # target_features = self.encode_text(target_tokens).repeat(79,1)
+
+        # yes mean
+        target_tokens = clip.tokenize(target_class).to(self.device)
+        target_features = self.encode_text(target_tokens)
+        source_features = self.get_text_features(source_class).mean(dim=0, keepdim=True)
+
+        loss = F.cosine_similarity(source_features, target_features)
+        loss = 1 - loss
+        loss = torch.mean(loss)
+
+        return loss
+
+    def compute_test_text(self, source_class: str, target_class: str):
+        # templated
+        # text_features = self.get_text_features(source_class)
+        # target_feature = self.get_text_features(traget_class)
+
+        # targ = non_templated , src = templated
+        # target_tokens = clip.tokenize(target_class).to(self.device)
+        # target_features = self.encode_text(target_tokens).repeat(79,1)
+        # source_features = self.get_text_features(source_class)
+
+        # src = non_templated, targ = templated
+        # source_tokens = clip.tokenize(source_class).to(self.device)
+        # source_features = self.encode_text(source_tokens).repeat(79,1)
+        # target_features = self.get_text_features(target_class)
+
+        # tokens = clip.tokenize(source_class).to(self.device)
+        # text_features = self.encode_text(tokens).detach() #torch.Size([1,512])
+        # text_features = text_features.repeat(79,1)
+        # source_feature = self.get_text_features(source_class) #torch.Size([79,512])
+        # target_feature = self.encode_text(target_class)
+        # target_feature = self.get_text_features(target_class)
+        # self.set_text_features(source_class, target_class)
+
+        # for non templated
+        source_tokens = clip.tokenize(source_class).to(self.device)
+        source_features = self.encode_text(source_tokens)
+        target_tokens = clip.tokenize(target_class).to(self.device)
+        target_features = self.encode_text(target_tokens)
+
+        # for templated mean
+        # source_features = self.get_text_features(source_class).mean(axis=0, keepdim=True)
+        # target_features = self.get_text_features(target_class).mean(axis=0, keepdim=True)
+
+        loss = F.cosine_similarity(source_features, target_features)
+        # loss = F.cosine_similarity(self.src_text_features, self.target_text_features)
+        loss = 1 - loss
+        loss = torch.mean(loss)
+
+        return loss
+
+    # remove
+    def compute_test_img(self, source_class, target_class):
+        target_class = self.clip_preprocess(Image.open(target_class)).unsqueeze(0).to(self.device)
+        target_feature = self.get_image_features(target_class)
+        source_feature = self.get_text_features(source_class)
+
+        loss = F.cosine_similarity(target_feature, source_feature)
         loss = 1 - loss
         loss = torch.mean(loss)
 
