@@ -3,6 +3,7 @@ import threading
 from contextlib import contextmanager
 from functools import lru_cache
 from tqdm.auto import trange
+import torch
 from django.conf import settings
 
 from ..pytorch_deps.clip_loss import CLIPLoss
@@ -10,7 +11,6 @@ from .utils import at_working_directory
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    import torch
     from typing import Optional
     from training.networks_get3d import GeneratorDMTETMesh
 
@@ -19,7 +19,6 @@ if TYPE_CHECKING:
 def get_device() -> "Optional[torch.device]":
     if not settings.TORCH_ENABLED:
         return
-    import torch
     return torch.device(settings.TORCH_DEVICE)
 
 
@@ -117,7 +116,6 @@ def construct_all() -> None:
 
     # GET3D: Load State Dict
     print("Loading state dict from: {}".format(settings.TORCH_WEIGHT_PATH))
-    import torch
     model_state_dict = torch.load(settings.TORCH_WEIGHT_PATH, map_location=device)
     generator_ema.load_state_dict(model_state_dict['G_ema'], strict=True)
 

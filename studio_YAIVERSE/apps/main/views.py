@@ -1,5 +1,3 @@
-import io
-import base64
 from django.shortcuts import get_object_or_404, Http404
 from django.core.files import File
 from django.http import FileResponse
@@ -14,7 +12,7 @@ from django.contrib.auth.models import User
 
 from .serializers import Object3DSerializer, Object3DCreationByText, Object3DCreationByImage
 from .models import Object3D
-from .pytorch import inference_text, inference_image
+from .pytorch import inference
 
 
 class Object3DModelViewSet(GenericViewSet):
@@ -63,20 +61,14 @@ class Object3DModelViewSet(GenericViewSet):
     @swagger_auto_schema(method="POST", request_body=Object3DCreationByText, responses={201: Object3DSerializer()})
     @action(methods=["POST"], detail=False)
     def create_by_text(self, request, *args, **kwargs):
-        return self.__create_logic(
-            inference_function=inference_text,
-            inference_refer_getter=lambda data: data["text"]
-        )
+        return self.create_logic()
 
     @swagger_auto_schema(method="POST", request_body=Object3DCreationByImage, responses={201: Object3DSerializer()})
     @action(methods=["POST"], detail=False)
     def create_by_image(self, request, *args, **kwargs):
-        return self.__create_logic(
-            inference_function=inference_image,
-            inference_refer_getter=lambda data: io.BytesIO(base64.b64decode(data["image"]))
-        )
+        return self.create_logic()
 
-    def __create_logic(self, inference_function, inference_refer_getter):
+    def create_logic(self):
         serializer = self.get_serializer(data=self.request.data)
         serializer.is_valid(raise_exception=True)
         queryset = Object3D.objects.filter(user__username=self.kwargs["username"], name=serializer.data["name"])
@@ -88,7 +80,7 @@ class Object3DModelViewSet(GenericViewSet):
         else:
             instance = Object3D(name=serializer.data["name"], description=serializer.data["description"])
             instance.user = get_object_or_404(User, username=self.kwargs["username"])
-        infer_result = inference_function(serializer.data["name"], inference_refer_getter(serializer.data))
+        infer_result = inference(serializer.data["name"], serializer.get_infer_target())
         instance.with_effect_file = File(infer_result.file, name="{}_1.glb".format(instance.name))
         instance.with_effect_thumbnail = File(infer_result.thumbnail, name="{}_1.png".format(instance.name))
         instance.without_effect_file = File(infer_result.file, name="{}_0.glb".format(instance.name))
