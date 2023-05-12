@@ -155,6 +155,7 @@ def construct_all():
 nn_module = type(sys)(__name__)
 nn_module.get_device = get_device
 nn_module.using_generator_ema = using_generator_ema
+nn_module.get_camera = get_camera
 nn_module.get_clip_loss = get_clip_loss
 nn_module.get_clip_map = get_clip_map
 nn_module.construct_all = construct_all
