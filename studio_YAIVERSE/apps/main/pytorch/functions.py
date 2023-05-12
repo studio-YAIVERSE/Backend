@@ -137,6 +137,7 @@ def postprocess_mesh(generated_mesh, name: str):
 
 def with_log(obj):
     import pprint
+    obj = list(obj)
     try:
         pprint.pprint(dict(obj))
     except (TypeError, ValueError):
