@@ -1,38 +1,47 @@
+import os
+import sys
 import functools
-from django.conf import settings
 
 
-def __setup_path():
-    import sys
-    import os.path
+def __setup_log(settings):
+    from .utils import set_log_level
+    if hasattr(settings, "TORCH_LOG_LEVEL"):
+        set_log_level(settings.TORCH_LOG_LEVEL)
+
+
+def __setup_path(settings):
+    from .utils import log_pytorch
     for path in settings.EXTRA_PYTHON_PATH:
         if os.path.isdir(path):
             if str(path) not in sys.path:
                 sys.path.append(str(path))
-            print("Registered to sys.path: {}".format(path))
+            log_pytorch("Registered to sys.path: {}".format(path), level=1)
     __setup_path.done = True
 
 
-def __check_pytorch():
+def __check_pytorch(settings):
     if not settings.TORCH_ENABLED:
         return
     try:
         import torch
         torch.cuda.init()
     except (ImportError, RuntimeError, AssertionError):
-        import os
-        import sys
         if sys.argv[1:][:1] == ["runserver"] or "gunicorn" in sys.modules or "TORCH_ENABLED" in os.environ:
-            raise
+            raise ImportError(
+                "Pytorch cuda runtime is not available, please install pytorch with cuda support. "
+                "If you want to run without pytorch, please set TORCH_ENABLED=False in your settings, "
+                "or set the environment variable TORCH_ENABLED=0."
+            )
         import warnings
         warnings.warn("Pytorch cuda runtime is not available, skipping pytorch ops...")
         settings.TORCH_ENABLED = False
 
 
-def __setup_torch_mode():
+def __setup_torch_mode(settings):
     if not settings.TORCH_ENABLED:
         return
-    print("Initializing Pytorch")
+    from .utils import log_pytorch
+    log_pytorch("Initializing Pytorch", level=1)
     import torch
     from torch.backends import cuda, cudnn
     torch.cuda.init()
@@ -43,12 +52,13 @@ def __setup_torch_mode():
     torch.set_grad_enabled(False)
 
 
-def __setup_torch_extensions():
+def __setup_torch_extensions(settings):
     if not settings.TORCH_ENABLED:
         return
-    print(
+    from .utils import log_pytorch
+    log_pytorch(
         "Initializing Pytorch Extensions: with{} compiling custom ops"
-        .format("out" * settings.TORCH_WITHOUT_CUSTOM_OPS_COMPILE)
+        .format("out" * settings.TORCH_WITHOUT_CUSTOM_OPS_COMPILE), level=1
     )
     from torch_utils.ops import upfirdn2d
     from torch_utils.ops import bias_act
@@ -65,21 +75,24 @@ def __setup_torch_extensions():
         upfirdn2d.upfirdn2d = upfirdn2d._upfirdn2d_ref  # NOQA
         bias_act.bias_act = bias_act._bias_act_ref  # NOQA
         filtered_lrelu.filtered_lrelu = filtered_lrelu._filtered_lrelu_ref  # NOQA
+    os.environ["PYOPENGL_PLATFORM"] = "egl"
 
 
-def __setup_torch_device():
+def __setup_torch_device(settings):
     if not settings.TORCH_ENABLED:
         return
-    print("Initializing Pytorch Device with: {}".format(settings.TORCH_DEVICE))
+    from .utils import log_pytorch
+    log_pytorch("Initializing Pytorch Device with: {}".format(settings.TORCH_DEVICE), level=1)
     import torch
     torch.cuda.set_device(settings.TORCH_DEVICE)
     torch.cuda.empty_cache()
 
 
-def __setup_seed():
+def __setup_seed(settings):
     if not settings.TORCH_ENABLED:
         return
-    print("Initializing Pytorch Generator with seed: {}".format(settings.TORCH_SEED))
+    from .utils import log_pytorch
+    log_pytorch("Initializing Pytorch Generator with seed: {}".format(settings.TORCH_SEED), level=1)
     import numpy as np
     import torch
     np.random.seed(settings.TORCH_SEED)
@@ -87,13 +100,19 @@ def __setup_seed():
 
 
 @functools.lru_cache(maxsize=None)
-def setup() -> None:
-    __setup_path()
-    __check_pytorch()
-    __setup_torch_mode()
-    __setup_torch_extensions()
-    __setup_torch_device()
-    __setup_seed()
+def setup():
+    from django.conf import settings
+    __setup_log(settings)
+    __setup_path(settings)
+    __check_pytorch(settings)
+    __setup_torch_mode(settings)
+    __setup_torch_extensions(settings)
+    __setup_torch_device(settings)
+    __setup_seed(settings)
 
 
-__all__ = ['setup']
+# Encapsulation
+nn_module = type(sys)(__name__)
+nn_module.setup = setup
+sys.modules[__name__] = nn_module
+del nn_module

@@ -8,6 +8,7 @@ gunicorn==20.1.0
 
 trimesh==3.21.5
 pyglet<2
+xvfbwrapper==0.2.9
 
 -f https://download.pytorch.org/whl/torch_stable.html
 torch==1.9.0+cu111
@@ -35,9 +36,6 @@ scipy
 click
 tqdm
 opencv-python==4.5.4.58
-
--f https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-1.9.0_cu111.html
-kaolin==0.13.0
 
 ftfy
 git+https://github.com/openai/CLIP.git
