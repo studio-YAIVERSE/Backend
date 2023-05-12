@@ -8,5 +8,5 @@ class MainConfig(AppConfig):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        from .pytorch import construct_all
-        construct_all()
+        from .pytorch import init
+        init()

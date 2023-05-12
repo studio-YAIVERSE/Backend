@@ -1,162 +1,120 @@
-import sys
-import threading
-from contextlib import contextmanager
-from functools import lru_cache
-from tqdm.auto import trange
+from PIL import Image
 import torch
-from django.conf import settings
-
-from .utils import at_working_directory
-
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from typing import Optional
-    from training.networks_get3d import GeneratorDMTETMesh
-    from ..pytorch_deps.clip_loss import CLIPLoss
+import clip
 
 
-@lru_cache(maxsize=None)
-def get_device() -> "Optional[torch.device]":
-    if not settings.TORCH_ENABLED:
-        return
-    return torch.device(settings.TORCH_DEVICE)
+imagenet_templates = (
+    'a bad photo of a {}.',
+    'a sculpture of a {}.',
+    'a photo of the hard to see {}.',
+    'a low resolution photo of the {}.',
+    'a rendering of a {}.',
+    'graffiti of a {}.',
+    'a bad photo of the {}.',
+    'a cropped photo of the {}.',
+    'a tattoo of a {}.',
+    'the embroidered {}.',
+    'a photo of a hard to see {}.',
+    'a bright photo of a {}.',
+    'a photo of a clean {}.',
+    'a photo of a dirty {}.',
+    'a dark photo of the {}.',
+    'a drawing of a {}.',
+    'a photo of my {}.',
+    'the plastic {}.',
+    'a photo of the cool {}.',
+    'a close-up photo of a {}.',
+    'a black and white photo of the {}.',
+    'a painting of the {}.',
+    'a painting of a {}.',
+    'a pixelated photo of the {}.',
+    'a sculpture of the {}.',
+    'a bright photo of the {}.',
+    'a cropped photo of a {}.',
+    'a plastic {}.',
+    'a photo of the dirty {}.',
+    'a jpeg corrupted photo of a {}.',
+    'a blurry photo of the {}.',
+    'a photo of the {}.',
+    'a good photo of the {}.',
+    'a rendering of the {}.',
+    'a {} in a video game.',
+    'a photo of one {}.',
+    'a doodle of a {}.',
+    'a close-up photo of the {}.',
+    'a photo of a {}.',
+    'the origami {}.',
+    'the {} in a video game.',
+    'a sketch of a {}.',
+    'a doodle of the {}.',
+    'a origami {}.',
+    'a low resolution photo of a {}.',
+    'the toy {}.',
+    'a rendition of the {}.',
+    'a photo of the clean {}.',
+    'a photo of a large {}.',
+    'a rendition of a {}.',
+    'a photo of a nice {}.',
+    'a photo of a weird {}.',
+    'a blurry photo of a {}.',
+    'a cartoon {}.',
+    'art of a {}.',
+    'a sketch of the {}.',
+    'a embroidered {}.',
+    'a pixelated photo of a {}.',
+    'itap of the {}.',
+    'a jpeg corrupted photo of the {}.',
+    'a good photo of a {}.',
+    'a plushie {}.',
+    'a photo of the nice {}.',
+    'a photo of the small {}.',
+    'a photo of the weird {}.',
+    'the cartoon {}.',
+    'art of the {}.',
+    'a drawing of the {}.',
+    'a photo of the large {}.',
+    'a black and white photo of a {}.',
+    'the plushie {}.',
+    'a dark photo of a {}.',
+    'itap of a {}.',
+    'graffiti of the {}.',
+    'a toy {}.',
+    'itap of my {}.',
+    'a photo of a cool {}.',
+    'a photo of a small {}.',
+    'a tattoo of the {}.',
+)
 
 
-# NOTE: In this project we support only single-GPU runtime,
-# so we can use global lock for all GPU-related operations.
-# If you want to support multi-GPU runtime, you should implement
-# extra allocating logic for each GPU.
-G_EMA_LOCK = threading.Lock()
-G_EMA_MODULE: "Optional[GeneratorDMTETMesh]" = None
+class CLIPLoss(torch.nn.Module):
 
+    def __init__(self, device, clip_model='ViT-B/32'):
+        super(CLIPLoss, self).__init__()
+        self.device = device
+        self.model, self.clip_preprocess = clip.load(clip_model, device=self.device)
 
-@contextmanager
-def using_generator_ema():
-    assert CONSTRUCTED
-    with G_EMA_LOCK:
-        yield G_EMA_MODULE
+    def encode_text(self, tokens: list) -> torch.Tensor:
+        return self.model.encode_text(tokens)
 
+    def get_text_features(self, class_str: str, templates=imagenet_templates, norm: bool = True) -> torch.Tensor:
+        template_text = [template.format(class_str) for template in templates]
+        tokens = clip.tokenize(template_text).to(self.device)
+        text_features = self.encode_text(tokens).detach()
+        if norm:
+            text_features /= text_features.norm(dim=-1, keepdim=True)
+        return text_features
 
-CAMERA: "Optional[torch.Tensor]" = None
+    def preprocessing_image(self, img) -> torch.Tensor:
+        preprocessed = self.clip_preprocess(Image.open(img)).unsqueeze(0).to(self.device)
+        encoding = self.model.encode_image(preprocessed)
+        encoding /= encoding.norm(dim=-1, keepdim=True)
+        return encoding
 
+    def templated_mean_text(self, source_class: str):
+        source_features = self.get_text_features(source_class).mean(dim=0, keepdim=True)
+        return source_features
 
-def get_camera():
-    assert CONSTRUCTED
-    return CAMERA
-
-
-CLIP_LOSS_MODULE: "Optional[CLIPLoss]" = None
-
-
-def get_clip_loss() -> "CLIPLoss":
-    assert CONSTRUCTED
-    return CLIP_LOSS_MODULE
-
-
-CLIP_MAP: "dict[str, tuple[torch.Tensor, dict[str, torch.Tensor]]]" = {}
-
-
-def get_clip_map() -> "dict[str, tuple[torch.Tensor, dict[str, torch.Tensor]]]":
-    assert CONSTRUCTED
-    return CLIP_MAP
-
-
-CONSTRUCTED = False
-
-
-def construct_all():
-    global G_EMA_MODULE, CAMERA, CLIP_LOSS_MODULE, CLIP_MAP, CONSTRUCTED
-
-    # Condition Check
-    from .setup import setup
-    setup()
-    if not settings.TORCH_ENABLED:
-        return
-    if G_EMA_MODULE is not None:
-        return
-
-    # TORCH: init device
-    device = get_device()
-
-    # CLIP: Init
-    print("Initializing CLIP Loss for Inference...")
-    from ..pytorch_deps.clip_loss import CLIPLoss
-    clip_loss = CLIPLoss(device).eval().requires_grad_(False)
-
-    # GET3D: Init
-    print("Initializing GET3D Model for Inference...")
-    if settings.MODEL_OPTS["fp32"]:
-        extra_kwargs = dict()
-        extra_kwargs["num_fp16_res"] = 0
-        extra_kwargs["conv_clamp"] = None
-    else:
-        extra_kwargs = {}
-    with at_working_directory(settings.BASE_DIR / "GET3D"):
-        from training.networks_get3d import GeneratorDMTETMesh
-        generator_ema = GeneratorDMTETMesh(
-            c_dim=0,
-            img_resolution=settings.TORCH_RESOLUTION,
-            img_channels=3,
-            mapping_kwargs=dict(num_layers=8),
-            fused_modconv_default='inference_only',
-            device=device,
-            z_dim=settings.MODEL_OPTS["latent_dim"],
-            w_dim=settings.MODEL_OPTS["latent_dim"],
-            one_3d_generator=settings.MODEL_OPTS["one_3d_generator"],
-            deformation_multiplier=settings.MODEL_OPTS["deformation_multiplier"],
-            use_style_mixing=settings.MODEL_OPTS["use_style_mixing"],
-            dmtet_scale=settings.MODEL_OPTS["dmtet_scale"],
-            feat_channel=settings.MODEL_OPTS["feat_channel"],
-            mlp_latent_channel=settings.MODEL_OPTS["mlp_latent_channel"],
-            tri_plane_resolution=settings.MODEL_OPTS["tri_plane_resolution"],
-            n_views=settings.MODEL_OPTS["n_views"],
-            render_type=settings.MODEL_OPTS["render_type"],
-            use_tri_plane=settings.MODEL_OPTS["use_tri_plane"],
-            tet_res=settings.MODEL_OPTS["tet_res"],
-            geometry_type=settings.MODEL_OPTS["geometry_type"],
-            data_camera_mode=settings.MODEL_OPTS["data_camera_mode"],
-            channel_base=settings.MODEL_OPTS["cbase"],
-            channel_max=settings.MODEL_OPTS["cmax"],
-            n_implicit_layer=settings.MODEL_OPTS["n_implicit_layer"],
-            **extra_kwargs
-        )
-    generator_ema.eval().requires_grad_(False).to(device)
-
-    # GET3D: Load State Dict
-    print("Loading state dict from: {}".format(settings.TORCH_WEIGHT_PATH))
-    model_state_dict = torch.load(settings.TORCH_WEIGHT_PATH, map_location=device)
-    generator_ema.load_state_dict(model_state_dict['G_ema'], strict=True)
-
-    # Load CLIP-feature Map
-    print("Loading CLIP-feature Mapping from: {}".format(settings.CLIP_MAP_PATH))
-    clip_map = torch.load(settings.CLIP_MAP_PATH, map_location=device)
-
-    # GET3D: Warm Up
-    total = settings.TORCH_WARM_UP_ITER
-    geo_z = torch.randn([1, generator_ema.z_dim], device=device)
-    tex_z = torch.randn([1, generator_ema.z_dim], device=device)
-    for _ in trange(1, total + 1, desc="Warming up...", leave=False):
-        generator_ema.update_w_avg(None)
-        generator_ema.generate_3d_mesh(geo_z=geo_z, tex_z=tex_z, c=None, truncation_psi=0.7)
-
-    # GET3D: Get Camera
-    camera = generator_ema.synthesis.generate_rotate_camera_list(n_batch=1)[5]
-
-    # Complete
-    print("Successfully loaded models.")
-    G_EMA_MODULE = generator_ema
-    CAMERA = camera
-    CLIP_LOSS_MODULE = clip_loss
-    CLIP_MAP = clip_map
-    CONSTRUCTED = True
-
-
-# Encapsulation
-nn_module = type(sys)(__name__)
-nn_module.get_device = get_device
-nn_module.using_generator_ema = using_generator_ema
-nn_module.get_camera = get_camera
-nn_module.get_clip_loss = get_clip_loss
-nn_module.get_clip_map = get_clip_map
-nn_module.construct_all = construct_all
-sys.modules[__name__] = nn_module
+    def non_templated_text(self, source_class: str):
+        source_tokens = clip.tokenize(source_class).to(self.device)
+        source_features = self.encode_text(source_tokens)
+        return source_features

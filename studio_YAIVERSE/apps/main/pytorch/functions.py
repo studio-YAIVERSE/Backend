@@ -1,21 +1,83 @@
 import os
 import io
-import re
+import contextlib
 import tempfile
-import zipfile
 import PIL.Image
 import numpy as np
 import cv2
 import torch
 import nvdiffrast.torch as dr
 import trimesh
+import trimesh.proximity
+import trimesh.voxel.ops
+import pyglet
+import xvfbwrapper
 from operator import itemgetter
+
+from .utils import inference_result
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import *
-    from ..pytorch_deps.clip_loss import CLIPLoss
+    from .nn import CLIPLoss
     from training.networks_get3d import GeneratorDMTETMesh
+
+
+def multibox(centers, pitch=1.0, colors=None):  # function for voxelize()
+    from trimesh import primitives
+    from trimesh.base import Trimesh
+    # get centers as numpy array
+    centers = np.asanyarray(
+        centers, dtype=np.float64)
+    # get a basic box
+    b = primitives.Box()
+    # apply the pitch
+    b.apply_scale(float(pitch))
+    # tile into one box vertex per center
+    v = np.tile(
+        centers,
+        (1, len(b.vertices))).reshape((-1, 3))
+    # offset to centers
+    v += np.tile(b.vertices, (len(centers), 1))
+
+    f = np.tile(b.faces, (len(centers), 1))
+    f += np.tile(
+        np.arange(len(centers)) * len(b.vertices),
+        (len(b.faces), 1)).T.reshape((-1, 1))
+    face_colors = colors.repeat(12, axis=0)
+    vertex_colors = colors.repeat(8, axis=0)
+
+    return Trimesh(
+        vertices=v,
+        faces=f,
+        face_colors=face_colors,
+        vertex_colors=vertex_colors,
+        validate=True,
+        merge_tex=True,
+        merge_norm=True,
+    )
+
+
+def voxelize(mesh: trimesh.Trimesh, voxel_size: float = 0.01, quantize: bool = True):
+    angel_voxel = mesh.voxelized(voxel_size).hollow()
+    colors = np.asarray(mesh.visual.to_color().vertex_colors)
+    if quantize:
+        quantize_factor = 41
+        colors = (np.floor(colors.astype(float) / quantize_factor) * quantize_factor).astype(np.uint8)
+    mesh_verts = mesh.vertices
+    _, vert_idx = trimesh.proximity.ProximityQuery(mesh).vertex(angel_voxel.points)
+    cube_color = np.zeros([angel_voxel.shape[0], angel_voxel.shape[1], angel_voxel.shape[2], 4], dtype=np.uint8)
+    for idx, vert in enumerate(vert_idx):
+        vox_verts = angel_voxel.points_to_indices(mesh_verts[vert])
+        curr_color = colors[vert]
+        curr_color[3] = 255
+        cube_color[vox_verts[0], vox_verts[1], vox_verts[2], :] = curr_color
+    voxelized_mesh = multibox(
+        angel_voxel.sparse_indices.astype(float),
+        colors=cube_color[angel_voxel.encoding.dense]
+    )
+    voxelized_mesh.apply_transform(angel_voxel.transform)
+    return voxelized_mesh
 
 
 def convert_obj_to_extension(
@@ -23,9 +85,12 @@ def convert_obj_to_extension(
         mesh_obj: "str",
         material: "Optional[str]" = None,
         texture_map: "Optional[PIL.Image.Image]" = None,
-        extension: "Optional[str]" = "glb"
-) -> "io.BytesIO":
-    with tempfile.TemporaryDirectory() as tempdir:
+        tempdir: "Optional[str]" = None
+) -> "Tuple[io.BytesIO, trimesh.Trimesh]":
+
+    with contextlib.ExitStack() as stk:
+        if tempdir is None:
+            tempdir = stk.enter_context(tempfile.TemporaryDirectory())
 
         mesh_obj_name = os.path.join(tempdir, name + '.obj')
         with open(mesh_obj_name, 'w') as fp:
@@ -39,17 +104,10 @@ def convert_obj_to_extension(
             with open(text_map_name, 'wb') as fp:
                 texture_map.save(fp)
 
-        if extension:
-            return io.BytesIO(trimesh.load(mesh_obj_name).export(file_type=extension))
-        else:
-            file = io.BytesIO()
-            bundle = zipfile.ZipFile(file, "w")
-            bundle.write(mesh_obj_name, arcname=name + '.obj', compress_type=zipfile.ZIP_DEFLATED)
-            if material is not None:
-                bundle.write(material_name, arcname=name + '.mtl', compress_type=zipfile.ZIP_DEFLATED)
-            if texture_map is not None:
-                bundle.write(text_map_name, arcname=name + '.png', compress_type=zipfile.ZIP_DEFLATED)
-            return file
+        mesh = trimesh.load(mesh_obj_name)
+        file = io.BytesIO(mesh.export(file_type="glb"))
+
+        return file, mesh
 
 
 def format_material(filename: "str") -> "str":
@@ -105,7 +163,7 @@ def postprocess_texture_map(tensor: "torch.Tensor") -> "PIL.Image.Image":
 
 def thumbnail_to_pil(tensor: "torch.Tensor") -> "PIL.Image.Image":
     lo, hi = -1, 1
-    N, C, H, W = tensor.shape
+    N, C, H, W = tensor.shape  # noqa
     assert N == 1 and C == 3
     tensor = (tensor - lo) * (255 / (hi - lo))
     img = tensor.detach().cpu().numpy().astype(np.float32)
@@ -113,57 +171,105 @@ def thumbnail_to_pil(tensor: "torch.Tensor") -> "PIL.Image.Image":
     return PIL.Image.fromarray(img, 'RGB')
 
 
-def postprocess_thumbnail(generated_thumbnail):
+def postprocess_outputs(generated_thumbnail, generated_mesh, name: "str"):
     img, _ = generated_thumbnail
     thumbnail = io.BytesIO()
     thumbnail_to_pil(img[:, :3]).save(thumbnail, format="PNG")
-    return thumbnail
 
-
-def postprocess_mesh(generated_mesh, name: str):
     (mesh_v,), (mesh_f,), (all_uvs,), (all_mesh_tex_idx,), (tex_map,) = generated_mesh
-    mesh_obj = format_mesh_obj(
+    mesh_str = format_mesh_obj(
         mesh_v.data.cpu().numpy(),
         all_uvs.data.cpu().numpy(),
         mesh_f.data.cpu().numpy(),
         all_mesh_tex_idx.data.cpu().numpy(),
         name
     )
-    material = format_material(name)
-    texture_map = postprocess_texture_map(tex_map)
-    file = convert_obj_to_extension(name, mesh_obj, material, texture_map, extension="glb")
-    return file
+    mtl_str = format_material(name)
+    tex_bin = postprocess_texture_map(tex_map)
 
+    with tempfile.TemporaryDirectory() as tmpdir:
+        file, mesh = convert_obj_to_extension(name, mesh_str, mtl_str, tex_bin, tmpdir)
 
-def with_log(obj):
-    import pprint
-    obj = list(obj)
+    vm = voxelize(mesh)
+    vf = io.BytesIO(vm.export(file_type="glb"))
+
     try:
-        pprint.pprint(dict(obj))
-    except (TypeError, ValueError):
-        pprint.pprint(obj)
+        with contextlib.ExitStack() as stack:
+            try:
+                stack.enter_context(xvfbwrapper.Xvfb())
+            except OSError:
+                pass
+            window_conf = pyglet.gl.Config(double_buffer=True, depth_size=24)
+            img = vm.scene().save_image(resolution=(512, 512), visible=False, window_conf=window_conf)
+    except Exception as exc:
+        from .utils import log_pytorch
+        log_pytorch("Failed to render image - %s: %s" % (type(exc).__name__, exc), level=2)
+        from .fallback import _fallback_image
+        img = _fallback_image()
+
+    vt = io.BytesIO(img)
+
+    return inference_result(file=file, thumbnail=thumbnail, voxelized_file=vf, voxelized_thumbnail=vt)
+
+
+def with_log(obj: "Any") -> "Any":
+    import pprint
+    from .utils import should_log, log_pytorch
+    if should_log(level=3):
+        output = io.StringIO()
+        try:
+            obj = list(obj)
+        except (TypeError, ValueError):
+            pass
+        try:
+            pprint.pprint(dict(obj), stream=output)
+        except (TypeError, ValueError):
+            pprint.pprint(obj, stream=output)
+        log_pytorch(output.getvalue(), level=3)
     return obj
 
 
-def mapping_checkpoint(clip_loss: "CLIPLoss", clip_map: "dict", target: "Union[str, io.BytesIO]") -> "Tuple[str, str]":
+def cosine_distance(src: "torch.Tensor", trg: "torch.Tensor") -> "float":
+    return torch.cosine_similarity(src, trg).mean().neg_().add_(1.).item()
+
+
+def schedule_nada_training(target, feat):  # noqa
+    # TODO: Implement NADA training
+    # In this MVP version, we actually don't re-train NADA network,
+    # but we can do it in the future by additional implementation.
+    pass
+
+
+def map_checkpoint(clip_loss: "CLIPLoss", clip_map: "dict", target: "Union[str, io.BytesIO]") -> "Tuple[str, str]":
     if isinstance(target, io.BytesIO):
         feat = clip_loss.preprocessing_image(target)
     elif isinstance(target, str):
         feat = clip_loss.get_text_features(target)
     else:
         raise TypeError(target)
-    key_src = min(with_log((k, clip_loss.compute_loss(v[0], feat)) for k, v in clip_map.items()), key=itemgetter(1))[0]
-    key_dst = min(with_log((k, clip_loss.compute_loss(v, feat)) for k, v in clip_map[key_src][1].items()), key=itemgetter(1))[0]
+    key_src = min(
+        with_log((k, cosine_distance(v[0], feat)) for k, v in clip_map.items()),
+        key=itemgetter(1))[0]
+    key_dsts = sorted(
+        with_log((k, cosine_distance(v, feat)) for k, v in clip_map[key_src][1].items()),
+        key=itemgetter(1))[:2]
+    if key_dsts[0][0] == key_src and key_dsts[0][1] > .1:
+        key_dst, loss = key_dsts[1]
+    else:
+        key_dst, loss = key_dsts[0]
+    if loss > .19:
+        schedule_nada_training(target, feat)
     return key_src, key_dst
 
 
-def load_nada_checkpoint_from_keys(base_dir, device, key_src, key_dst):
-    ckpt = "{key_src}_{key_dst}.pt".format(key_src=re.sub(r'\s', '', key_src), key_dst=re.sub(r'\s', '', key_dst))
-    ckpt = os.path.join(base_dir, ckpt.lower())
-    return torch.load(ckpt, map_location=device)["g_ema"]
+def generate_latent(
+        g_ema: "GeneratorDMTETMesh",
+        generator: "Optional[torch.Generator]" = None
+) -> "torch.Tensor":
+    return torch.randn([1, g_ema.z_dim], device=g_ema.device, generator=generator)
 
 
-def inference_core_logic(
+def inference_logic(
         g_ema: "GeneratorDMTETMesh",
         geo_z,
         tex_z,

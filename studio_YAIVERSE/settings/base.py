@@ -4,6 +4,7 @@ Common settings shared by both development and production environments.
 
 import os as _os
 import pathlib as _pathlib
+import shutil as _shutil
 
 # Base Project Directory Definition
 
@@ -12,22 +13,22 @@ BASE_DIR = _pathlib.Path(__file__).resolve().parent.parent.parent
 
 # Python Ops
 
-EXTRA_PYTHON_PATH = [
-    BASE_DIR / 'GET3D',
-]
+EXTRA_PYTHON_PATH = []
+if _os.path.isdir(BASE_DIR / 'GET3D'):
+    EXTRA_PYTHON_PATH.append(BASE_DIR / 'GET3D')
 
 
 # Pytorch Ops
 
-TORCH_ENABLED = bool(int(_os.getenv("TORCH_ENABLED", 1)))
+TORCH_ENABLED = bool(int(_os.getenv("TORCH_ENABLED", 1)))  # 0 disables all torch operations
+
+TORCH_LOG_LEVEL = int(_os.getenv("TORCH_LOG_LEVEL", 2))  # 0: silent, 1: call, 2: 1 + process, 3: 2 + nada output
 
 TORCH_WARM_UP_ITER = int(_os.getenv("TORCH_WARM_UP_ITER", 10))
 
-TORCH_WITHOUT_CUSTOM_OPS_COMPILE = bool(int(_os.getenv("TORCH_WITHOUT_CUSTOM_OPS_COMPILE", 0)))
+TORCH_WITHOUT_CUSTOM_OPS_COMPILE = bool(int(_os.getenv("TORCH_WITHOUT_CUSTOM_OPS_COMPILE", 0)))  # without ninja
 
 TORCH_DEVICE = _os.getenv("TORCH_DEVICE", "cuda:0")
-
-TORCH_WEIGHT_PATH = _os.getenv("TORCH_WEIGHT_PATH", BASE_DIR / "weights/get3d/shapenet_car.pt")  # TODO
 
 NADA_WEIGHT_DIR = _os.getenv("NADA_WEIGHT_DIR", BASE_DIR / "weights/get3d_nada")
 
@@ -38,7 +39,7 @@ MODEL_OPTS = {  # Compatible with script arguments
     'one_3d_generator': True,
     'deformation_multiplier': 1.,
     'use_style_mixing': True,
-    'dmtet_scale': 1.,  # TODO
+    'dmtet_scale': 1.,
     'feat_channel': 16,
     'mlp_latent_channel': 32,
     'tri_plane_resolution': 256,
@@ -47,7 +48,7 @@ MODEL_OPTS = {  # Compatible with script arguments
     'use_tri_plane': True,
     'tet_res': 90,
     'geometry_type': 'conv3d',
-    'data_camera_mode': 'shapenet_car',  # TODO
+    'data_camera_mode': 'shapenet_car',
     'n_implicit_layer': 1,
     'cbase': 32768,
     'cmax': 512,
@@ -164,4 +165,4 @@ CORS_ALLOW_CREDENTIALS = True
 
 
 # Remove modules used
-del _os, _pathlib
+del _os, _pathlib, _shutil

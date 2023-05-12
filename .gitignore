@@ -6,7 +6,6 @@ modules.xml
 *.ipr
 
 ### Modules & Weights ###
-GET3D/
 weights/
 
 ### Django ###

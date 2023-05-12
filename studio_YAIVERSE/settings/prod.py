@@ -27,6 +27,9 @@ secret.json example using mysql database:
 from .base import *
 
 
+TORCH_VERBOSITY = 0
+
+
 SECRET_KEY: str  # type: str
 
 DEBUG = False

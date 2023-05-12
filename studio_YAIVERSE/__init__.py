@@ -1,3 +1,6 @@
+__version__ = "1.0.0"
+
+
 def main():
     import os
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'studio_YAIVERSE.settings')

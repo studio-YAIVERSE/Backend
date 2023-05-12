@@ -1,32 +1,15 @@
-# Prepare Module
-git clone https://github.com/nv-tlabs/GET3D.git
-
 # Install dependencies
+apt-get install -y xvfb || sudo apt-get install -y xvfb || echo "Failed to install xvfb"
 python3 -m pip install -r requirements.txt
 
 # Download weights
-mkdir weights
-mkdir weights/get3d
-FILEID=18UdsemUdKo75GXmQLLVYdcOhNZ3zM215
-FILENAME=weights/get3d/shapenet_car.pt
-curl -sc ./cookie.txt "https://drive.google.com/uc?export=download&id=${FILEID}" > /dev/null
-curl -Lb ./cookie.txt "https://drive.google.com/uc?export=download&confirm=`awk '/_warning_/ {print $NF}' ./cookie.txt`&id=${FILEID}" -o ${FILENAME}
-FILEID=1gXwK3-Y16UBi1-KgTClKcuGv8EFXSeKo
-FILENAME=weights/get3d/shapenet_chair.pt
-curl -sc ./cookie.txt "https://drive.google.com/uc?export=download&id=${FILEID}" > /dev/null
-curl -Lb ./cookie.txt "https://drive.google.com/uc?export=download&confirm=`awk '/_warning_/ {print $NF}' ./cookie.txt`&id=${FILEID}" -o ${FILENAME}
-FILEID=1XNWQLCwJ6V_wr2G0dDRsyWyT05b1lWmK
-FILENAME=weights/get3d/shapenet_motorbike.pt
-curl -sc ./cookie.txt "https://drive.google.com/uc?export=download&id=${FILEID}" > /dev/null
-curl -Lb ./cookie.txt "https://drive.google.com/uc?export=download&confirm=`awk '/_warning_/ {print $NF}' ./cookie.txt`&id=${FILEID}" -o ${FILENAME}
-FILEID=1msJs8HUR_fjhAJJHrWQkgbwgRW_gFSFq
-FILENAME=weights/get3d/shapenet_table.pt
-curl -sc ./cookie.txt "https://drive.google.com/uc?export=download&id=${FILEID}" > /dev/null
-curl -Lb ./cookie.txt "https://drive.google.com/uc?export=download&confirm=`awk '/_warning_/ {print $NF}' ./cookie.txt`&id=${FILEID}" -o ${FILENAME}
-rm cookie.txt
+wget https://github.com/studio-YAIVERSE/Backend/releases/download/1.0.0/weights.z01
+wget https://github.com/studio-YAIVERSE/Backend/releases/download/1.0.0/weights.z02
+wget https://github.com/studio-YAIVERSE/Backend/releases/download/1.0.0/weights.zip
+zip -s 0 weights.zip --output merge.zip && unzip merge.zip && rm merge.zip weights.{z01,z02,zip}
 
 # Prepare local database
 TORCH_ENABLED=0 python3 -m studio_YAIVERSE migrate
 
-# Compile pytorch modules: will be automatically compiled while running the first time
+# Compile pytorch modules: will be automatically compiled while running first time
 TORCH_ENABLED=1 python3 -m studio_YAIVERSE shell -c "exit(0)"
