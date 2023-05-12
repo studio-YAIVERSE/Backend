@@ -113,6 +113,28 @@ def thumbnail_to_pil(tensor: "torch.Tensor") -> "PIL.Image.Image":
     return PIL.Image.fromarray(img, 'RGB')
 
 
+def postprocess_thumbnail(generated_thumbnail):
+    img, _ = generated_thumbnail
+    thumbnail = io.BytesIO()
+    thumbnail_to_pil(img[:, :3]).save(thumbnail, format="PNG")
+    return thumbnail
+
+
+def postprocess_mesh(generated_mesh, name: str):
+    (mesh_v,), (mesh_f,), (all_uvs,), (all_mesh_tex_idx,), (tex_map,) = generated_mesh
+    mesh_obj = format_mesh_obj(
+        mesh_v.data.cpu().numpy(),
+        all_uvs.data.cpu().numpy(),
+        mesh_f.data.cpu().numpy(),
+        all_mesh_tex_idx.data.cpu().numpy(),
+        name
+    )
+    material = format_material(name)
+    texture_map = postprocess_texture_map(tex_map)
+    file = convert_obj_to_extension(name, mesh_obj, material, texture_map, extension="glb")
+    return file
+
+
 def mapping_checkpoint(clip_loss: "CLIPLoss", clip_map: "dict", target: "Union[str, io.BytesIO]") -> "Tuple[str, str]":
     if isinstance(target, io.BytesIO):
         feat = clip_loss.preprocessing_image(target)
@@ -127,8 +149,8 @@ def mapping_checkpoint(clip_loss: "CLIPLoss", clip_map: "dict", target: "Union[s
 
 def load_nada_checkpoint_from_keys(base_dir, device, key_src, key_dst):
     ckpt = "{key_src}_{key_dst}.pt".format(key_src=re.sub(r'\s', '', key_src), key_dst=re.sub(r'\s', '', key_dst))
-    ckpt_full_path = os.path.join(base_dir, ckpt)
-    return torch.load(ckpt_full_path, map_location=device)["g_ema"]
+    ckpt = os.path.join(base_dir, ckpt.lower())
+    return torch.load(ckpt, map_location=device)["g_ema"]
 
 
 def inference_core_logic(

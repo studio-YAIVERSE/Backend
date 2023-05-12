@@ -4,7 +4,6 @@ from django.http import FileResponse
 from rest_framework.status import HTTP_200_OK, HTTP_201_CREATED, HTTP_204_NO_CONTENT
 from rest_framework.decorators import action
 from rest_framework.viewsets import GenericViewSet
-from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema, no_body
 from drf_yasg.openapi import Schema, TYPE_FILE, FORMAT_BINARY
@@ -73,10 +72,7 @@ class Object3DModelViewSet(GenericViewSet):
         serializer.is_valid(raise_exception=True)
         queryset = Object3D.objects.filter(user__username=self.kwargs["username"], name=serializer.data["name"])
         if queryset.exists():
-            try:
-                instance = queryset.get()
-            except Object3D.MultipleObjectsReturned:
-                raise ValidationError("Multiple objects with the same name")
+            instance = queryset.get()  # len(queryset) is 1: due to constraints
         else:
             instance = Object3D(name=serializer.data["name"], description=serializer.data["description"])
             instance.user = get_object_or_404(User, username=self.kwargs["username"])
