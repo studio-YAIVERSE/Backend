@@ -135,6 +135,16 @@ def postprocess_mesh(generated_mesh, name: str):
     return file
 
 
+def with_log(obj):
+    import pprint
+    obj = list(obj)
+    try:
+        pprint.pprint(dict(obj))
+    except (TypeError, ValueError):
+        pprint.pprint(obj)
+    return obj
+
+
 def mapping_checkpoint(clip_loss: "CLIPLoss", clip_map: "dict", target: "Union[str, io.BytesIO]") -> "Tuple[str, str]":
     if isinstance(target, io.BytesIO):
         feat = clip_loss.preprocessing_image(target)
@@ -142,8 +152,8 @@ def mapping_checkpoint(clip_loss: "CLIPLoss", clip_map: "dict", target: "Union[s
         feat = clip_loss.get_text_features(target)
     else:
         raise TypeError(target)
-    key_src = min(((k, clip_loss.compute_loss(v[0], feat)) for k, v in clip_map.items()), key=itemgetter(1))[0]
-    key_dst = min(((k, clip_loss.compute_loss(v, feat)) for k, v in clip_map[key_src][1].items()), key=itemgetter(1))[0]
+    key_src = min(with_log((k, clip_loss.compute_loss(v[0], feat)) for k, v in clip_map.items()), key=itemgetter(1))[0]
+    key_dst = min(with_log((k, clip_loss.compute_loss(v, feat)) for k, v in clip_map[key_src][1].items()), key=itemgetter(1))[0]
     return key_src, key_dst
 
 
