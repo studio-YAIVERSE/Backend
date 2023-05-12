@@ -6,13 +6,13 @@ from tqdm.auto import trange
 import torch
 from django.conf import settings
 
-from ..pytorch_deps.clip_loss import CLIPLoss
 from .utils import at_working_directory
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Optional
     from training.networks_get3d import GeneratorDMTETMesh
+    from ..pytorch_deps.clip_loss import CLIPLoss
 
 
 @lru_cache(maxsize=None)

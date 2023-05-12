@@ -31,7 +31,7 @@ TORCH_WEIGHT_PATH = _os.getenv("TORCH_WEIGHT_PATH", BASE_DIR / "weights/get3d/sh
 
 NADA_WEIGHT_DIR = _os.getenv("NADA_WEIGHT_DIR", BASE_DIR / "weights/get3d_nada")
 
-CLIP_MAP_PATH = _os.getenv("CLIP_MAP_PATH", BASE_DIR / "weights/clip_map/clip_map.pt")
+CLIP_MAP_PATH = _os.getenv("CLIP_MAP_PATH", BASE_DIR / "weights/clip_map/checkpoint_group.pt")
 
 MODEL_OPTS = {  # Compatible with script arguments
     'latent_dim': 512,

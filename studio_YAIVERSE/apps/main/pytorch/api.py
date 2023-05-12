@@ -9,9 +9,9 @@ from django.conf import settings
 from .nn import using_generator_ema, get_clip_loss, get_clip_map, get_device
 from .utils import inference_mode
 from .functions import (
-    inference_core_logic, mapping_checkpoint, load_nada_checkpoint_from_keys,
-    thumbnail_to_pil, postprocess_texture_map, format_mesh_obj, format_material,
-    convert_obj_to_extension
+    inference_core_logic,
+    mapping_checkpoint, load_nada_checkpoint_from_keys,
+    postprocess_thumbnail, postprocess_mesh,
 )
 
 from typing import TYPE_CHECKING
@@ -23,7 +23,7 @@ inference_result = namedtuple("inference_result", ["file", "thumbnail"])
 
 
 @inference_mode()
-def inference(name: "str", target: "Union[str, io.BytesIO]", extension: "Optional[str]" = "glb") -> inference_result:
+def inference(name: "str", target: "Union[str, io.BytesIO]") -> inference_result:
 
     log_name = "inference({})".format(", ".join("{0}={1!r}".format(*i) for i in locals().items()))
     print(log_name, ": init")
@@ -32,15 +32,18 @@ def inference(name: "str", target: "Union[str, io.BytesIO]", extension: "Optiona
     if device is None:
         return dummy_inference()
 
+    print(log_name, ": run clip")
     clip_loss = get_clip_loss()
     clip_map = get_clip_map()
     key_src_key_dst = mapping_checkpoint(clip_loss, clip_map, target)
-    print(log_name, ": loading checkpoint from", *key_src_key_dst)
 
+    print(log_name, ": loading checkpoint from", *key_src_key_dst)
     g_ema_checkpoint = load_nada_checkpoint_from_keys(settings.NADA_WEIGHT_DIR, device, *key_src_key_dst)
 
     with using_generator_ema() as g_ema:
         g_ema.load_state_dict(g_ema_checkpoint)
+
+        print(log_name, ": run main inference")
         geo_z = torch.randn([1, g_ema.z_dim], device=device)
         tex_z = torch.randn([1, g_ema.z_dim], device=device)
         c_to_compute_w_avg = None
@@ -49,23 +52,9 @@ def inference(name: "str", target: "Union[str, io.BytesIO]", extension: "Optiona
             g_ema, geo_z=geo_z, tex_z=tex_z, c=None, truncation_psi=0.7
         )
 
-    img, _ = generated_thumbnail
-    rgb_img = img[:, :3]
-    thumbnail_img = thumbnail_to_pil(rgb_img)
-    thumbnail = io.BytesIO()
-    thumbnail_img.save(thumbnail, format="PNG")
-
-    (mesh_v,), (mesh_f,), (all_uvs,), (all_mesh_tex_idx,), (tex_map,) = generated_mesh
-    mesh_obj = format_mesh_obj(
-        mesh_v.data.cpu().numpy(),
-        all_uvs.data.cpu().numpy(),
-        mesh_f.data.cpu().numpy(),
-        all_mesh_tex_idx.data.cpu().numpy(),
-        name
-    )
-    material = format_material(name)
-    texture_map = postprocess_texture_map(tex_map)
-    file = convert_obj_to_extension(name, mesh_obj, material, texture_map, extension)
+    print(log_name, ": postprocessing")
+    thumbnail = postprocess_thumbnail(generated_thumbnail)
+    file = postprocess_mesh(generated_mesh, name)
 
     return inference_result(file=file, thumbnail=thumbnail)
 
