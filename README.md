@@ -7,12 +7,20 @@
 ### Getting Dependencies: Python & CUDA
 
 * Python 3.8: We highly recommend using `python3.8` for compatibility.
-* CUDA and CUDNN: We need `cuda-11.1` and `cudnn-8.0.5` for **compiling GET3D extensions**.
-  * Manually install via [homepage](https://developer.nvidia.com/cuda-downloads), or use [Docker image](https://hub.docker.com/r/nvidia/cuda).
+* CUDA and CUDNN: We need `cuda-11.1` and `cudnn-8.0.5` for compiling GET3D extensions.
+  * Manually install via [homepage](https://developer.nvidia.com/cuda-downloads), or **<u>use our Dockerfile</u>**. (recommended)
+  * Instead, set `TORCH_WITHOUT_CUSTOM_OPS_COMPILE=0` in environ or django settings, to disable GET3D extensions. (little bit slow inference speed)
 
 ### Runtime Preparation
 
-* Optional: make virtual environment. (recommended)
+* (Step 1) **<u>Recursively</u>** clone this repository (due to submodule dependency).
+
+```bash
+git clone --recursive https://github.com/studio-YAIVERSE/Backend studio-YAIVERSE-Backend
+cd studio-YAIVERSE-Backend
+```
+
+* (Step 2) Make virtual environment. <u>You can use Dockerfile instead</u>. (see below)
 
 ```bash
 python3 -m pip install virtualenv
@@ -20,10 +28,26 @@ python3 -m virtualenv venv --python=3.8
 source venv/bin/activate
 ```
 
-* We provide `setup.sh` for installing dependencies and model weight retrieval.
+* (Step 3) We provide `setup.sh` for installing dependencies and model weight retrieval.
 
 ```bash
 sh setup.sh
+```
+
+### Runtime preparation with Docker
+
+<u>Using Docker image is optional but recommended</u>. Follow this instead of (Step 2) upon.
+
+* Build Docker image
+
+```bash
+docker build -f Dockerfile -t studio-YAIVERSE:v1
+```
+
+* Start an interactive docker container
+
+```bash
+docker run --gpus device=all -it --rm -v .:/workspace -it studio-YAIVERSE:v1 bash
 ```
 
 ### How to run dev server
@@ -33,6 +57,8 @@ sh setup.sh
 
 ```bash
 python3 -m studio_YAIVERSE runserver --noreload
+TORCH_DEVICE=cuda:0 python3 -m studio_YAIVERSE runserver --noreload  # to specify device
+TORCH_ENABLED=0 python3 -m studio_YAIVERSE runserver  # to disable pytorch ops
 ```
 
 ### Appendix. How to deploy with gunicorn & nginx
@@ -119,4 +145,3 @@ python3 -m studio_YAIVERSE runserver --noreload
 5. Your site is now running at `http://$SERVER_NAME`!
 
 </details>
-
