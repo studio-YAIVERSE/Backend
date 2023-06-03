@@ -3,24 +3,22 @@ import sys
 import functools
 import threading
 
+from .utils import log_pytorch, set_log_level
+
 SETUP_LOCK = threading.Lock()
 SETUP_DONE = False
 
 
 def __setup_log(settings):
-    from .utils import set_log_level
     if "TORCH_LOG_LEVEL" in settings:
         set_log_level(settings["TORCH_LOG_LEVEL"])
 
 
 def __setup_path(settings):
-    from .utils import log_pytorch
-    for path in settings["EXTRA_PYTHON_PATH"]:
-        if os.path.isdir(path):
-            if str(path) not in sys.path:
-                sys.path.append(str(path))
-            log_pytorch("Registered to sys.path: {}".format(path), level=1)
-    __setup_path.done = True
+    path = str(os.path.abspath(os.path.expanduser(settings["GET3D_PATH"])))
+    if os.path.isdir(path) and path not in sys.path:
+        sys.path.append(path)
+        log_pytorch("Registered to sys.path: {}".format(path), level=1)
 
 
 def __check_pytorch(settings):
@@ -44,7 +42,6 @@ def __check_pytorch(settings):
 def __setup_torch_mode(settings):
     if not settings["TORCH_ENABLED"]:
         return
-    from .utils import log_pytorch
     log_pytorch("Initializing Pytorch", level=1)
     import torch
     from torch.backends import cuda, cudnn
@@ -59,7 +56,6 @@ def __setup_torch_mode(settings):
 def __setup_torch_extensions(settings):
     if not settings["TORCH_ENABLED"]:
         return
-    from .utils import log_pytorch
     log_pytorch(
         "Initializing Pytorch Extensions: with{} compiling custom ops"
         .format("out" * settings["TORCH_WITHOUT_CUSTOM_OPS_COMPILE"]), level=1
@@ -93,7 +89,6 @@ def __setup_torch_extensions(settings):
 def __setup_torch_device(settings):
     if not settings["TORCH_ENABLED"]:
         return
-    from .utils import log_pytorch
     log_pytorch("Initializing Pytorch Device with: {}".format(settings["TORCH_DEVICE"]), level=1)
     import torch
     torch.cuda.set_device(settings["TORCH_DEVICE"])
@@ -103,7 +98,6 @@ def __setup_torch_device(settings):
 def __setup_seed(settings):
     if not settings["TORCH_ENABLED"]:
         return
-    from .utils import log_pytorch
     log_pytorch("Initializing Pytorch Generator with seed: {}".format(settings["TORCH_SEED"]), level=1)
     import numpy as np
     import torch
@@ -124,10 +118,3 @@ def setup(settings):
                 __setup_torch_device(settings)
                 __setup_seed(settings)
                 SETUP_DONE = True
-
-
-# Encapsulation
-nn_module = type(sys)(__name__)
-nn_module.setup = setup
-sys.modules[__name__] = nn_module
-del nn_module

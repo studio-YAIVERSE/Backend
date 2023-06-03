@@ -8,14 +8,14 @@ ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
 
 
 @functools.lru_cache(maxsize=None)
-def _fallback_file():
+def _fallback_file() -> bytes:
     with open(os.path.join(ASSETS_DIR, "dummy_file.glb"), "rb") as f:
         file_data = f.read()
     return file_data
 
 
 @functools.lru_cache(maxsize=None)
-def _fallback_image():
+def _fallback_image() -> bytes:
     with open(os.path.join(ASSETS_DIR, "dummy_thumbnail.png"), "rb") as f:
         thumbnail_data = f.read()
     return thumbnail_data

@@ -173,17 +173,3 @@ def construct_all(settings):
     CLIP_MAP = clip_map
     DEVICE = device
     CONSTRUCTED = True
-
-
-# Encapsulation
-nn_module = type(sys)(__name__)
-nn_module.get_device = get_device
-nn_module.using_generator_ema = using_generator_ema
-nn_module.load_nada_checkpoint = load_nada_checkpoint
-nn_module.get_camera = get_camera
-nn_module.get_clip_loss = get_clip_loss
-nn_module.get_clip_map = get_clip_map
-nn_module.is_constructed = is_constructed
-nn_module.construct_all = construct_all
-sys.modules[__name__] = nn_module
-del nn_module
