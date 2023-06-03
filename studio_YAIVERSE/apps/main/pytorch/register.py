@@ -7,19 +7,10 @@ from functools import lru_cache
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import Optional
+    from typing import Optional, ContextManager
     import torch
     from .nn import CLIPLoss
     from training.networks_get3d import GeneratorDMTETMesh
-
-
-@lru_cache(maxsize=None)
-def get_device() -> "Optional[torch.device]":
-    from django.conf import settings
-    if not settings.TORCH_ENABLED:
-        return
-    import torch
-    return torch.device(settings.TORCH_DEVICE)
 
 
 # NOTE: In this project we support only single-GPU runtime,
@@ -31,7 +22,7 @@ G_EMA_MODULE: "Optional[GeneratorDMTETMesh]" = None
 
 
 @contextmanager
-def using_generator_ema():
+def using_generator_ema() -> "ContextManager[GeneratorDMTETMesh]":
     assert CONSTRUCTED
     with G_EMA_LOCK:
         yield G_EMA_MODULE
@@ -58,7 +49,7 @@ def get_camera():
 CLIP_LOSS_MODULE: "Optional[CLIPLoss]" = None
 
 
-def get_clip_loss() -> "CLIPLoss":
+def get_clip_loss() -> "Optional[CLIPLoss]":
     assert CONSTRUCTED
     return CLIP_LOSS_MODULE
 
@@ -71,31 +62,38 @@ def get_clip_map() -> "dict[str, tuple[torch.Tensor, dict[str, torch.Tensor]]]":
     return CLIP_MAP
 
 
-CONSTRUCTED = False
+DEVICE: "Optional[torch.device]" = None
+
+
+@lru_cache(maxsize=None)
+def get_device() -> "Optional[torch.device]":
+    return DEVICE
+
+
+CONSTRUCTED: bool = False
 
 
 def is_constructed():
     return CONSTRUCTED
 
 
-def construct_all():
-    global G_EMA_MODULE, NADA_DIR, CAMERA, CLIP_LOSS_MODULE, CLIP_MAP, CONSTRUCTED
+def construct_all(settings):
+    global G_EMA_MODULE, NADA_DIR, CAMERA, CLIP_LOSS_MODULE, CLIP_MAP, DEVICE, CONSTRUCTED
 
     # Initial Setup
     from .setup import setup
-    setup()
+    from .utils import at_working_directory, log_pytorch, should_log, trange
+    setup(settings)
 
     # Condition Check
-    from django.conf import settings
-    if not settings.TORCH_ENABLED:
+    if not settings["TORCH_ENABLED"]:
         return
     if G_EMA_MODULE is not None:
         return
 
     # TORCH: init device
     import torch
-    from .utils import at_working_directory, log_pytorch, should_log, trange
-    device = get_device()
+    device = torch.device(settings["TORCH_DEVICE"])
 
     # CLIP: Init
     log_pytorch("Initializing CLIP Loss for Inference...", level=1)
@@ -104,56 +102,56 @@ def construct_all():
 
     # GET3D: Init
     log_pytorch("Initializing GET3D Model for Inference...", level=1)
-    if settings.MODEL_OPTS["fp32"]:
+    if settings["MODEL_OPTS"]["fp32"]:
         extra_kwargs = dict()
         extra_kwargs["num_fp16_res"] = 0
         extra_kwargs["conv_clamp"] = None
     else:
         extra_kwargs = {}
-    with at_working_directory(settings.BASE_DIR / "GET3D"):
+    with at_working_directory(os.path.join(settings["BASE_DIR"], "GET3D")):
         from training.networks_get3d import GeneratorDMTETMesh
         generator_ema = GeneratorDMTETMesh(
             c_dim=0,
-            img_resolution=settings.TORCH_RESOLUTION,
+            img_resolution=settings["TORCH_RESOLUTION"],
             img_channels=3,
             mapping_kwargs=dict(num_layers=8),
             fused_modconv_default='inference_only',
             device=device,
-            z_dim=settings.MODEL_OPTS["latent_dim"],
-            w_dim=settings.MODEL_OPTS["latent_dim"],
-            one_3d_generator=settings.MODEL_OPTS["one_3d_generator"],
-            deformation_multiplier=settings.MODEL_OPTS["deformation_multiplier"],
-            use_style_mixing=settings.MODEL_OPTS["use_style_mixing"],
-            dmtet_scale=settings.MODEL_OPTS["dmtet_scale"],
-            feat_channel=settings.MODEL_OPTS["feat_channel"],
-            mlp_latent_channel=settings.MODEL_OPTS["mlp_latent_channel"],
-            tri_plane_resolution=settings.MODEL_OPTS["tri_plane_resolution"],
-            n_views=settings.MODEL_OPTS["n_views"],
-            render_type=settings.MODEL_OPTS["render_type"],
-            use_tri_plane=settings.MODEL_OPTS["use_tri_plane"],
-            tet_res=settings.MODEL_OPTS["tet_res"],
-            geometry_type=settings.MODEL_OPTS["geometry_type"],
-            data_camera_mode=settings.MODEL_OPTS["data_camera_mode"],
-            channel_base=settings.MODEL_OPTS["cbase"],
-            channel_max=settings.MODEL_OPTS["cmax"],
-            n_implicit_layer=settings.MODEL_OPTS["n_implicit_layer"],
+            z_dim=settings["MODEL_OPTS"]["latent_dim"],
+            w_dim=settings["MODEL_OPTS"]["latent_dim"],
+            one_3d_generator=settings["MODEL_OPTS"]["one_3d_generator"],
+            deformation_multiplier=settings["MODEL_OPTS"]["deformation_multiplier"],
+            use_style_mixing=settings["MODEL_OPTS"]["use_style_mixing"],
+            dmtet_scale=settings["MODEL_OPTS"]["dmtet_scale"],
+            feat_channel=settings["MODEL_OPTS"]["feat_channel"],
+            mlp_latent_channel=settings["MODEL_OPTS"]["mlp_latent_channel"],
+            tri_plane_resolution=settings["MODEL_OPTS"]["tri_plane_resolution"],
+            n_views=settings["MODEL_OPTS"]["n_views"],
+            render_type=settings["MODEL_OPTS"]["render_type"],
+            use_tri_plane=settings["MODEL_OPTS"]["use_tri_plane"],
+            tet_res=settings["MODEL_OPTS"]["tet_res"],
+            geometry_type=settings["MODEL_OPTS"]["geometry_type"],
+            data_camera_mode=settings["MODEL_OPTS"]["data_camera_mode"],
+            channel_base=settings["MODEL_OPTS"]["cbase"],
+            channel_max=settings["MODEL_OPTS"]["cmax"],
+            n_implicit_layer=settings["MODEL_OPTS"]["n_implicit_layer"],
             **extra_kwargs
         )
     generator_ema.eval().requires_grad_(False).to(device)
 
     # GET3D: Load State Dict
-    nada_dir = settings.NADA_WEIGHT_DIR
+    nada_dir = settings["NADA_WEIGHT_DIR"]
     choice = os.path.join(nada_dir, os.listdir(nada_dir)[0])
     log_pytorch("Loading state dict from: {}".format(choice), level=1)
     model_state_dict = torch.load(choice, map_location=device)
     generator_ema.load_state_dict(model_state_dict['G_ema'], strict=True)
 
     # Load CLIP-feature Map
-    log_pytorch("Loading CLIP-feature Mapping from: {}".format(settings.CLIP_MAP_PATH), level=1)
-    clip_map = torch.load(settings.CLIP_MAP_PATH, map_location=device)
+    log_pytorch("Loading CLIP-feature Mapping from: {}".format(settings["CLIP_MAP_PATH"]), level=1)
+    clip_map = torch.load(settings["CLIP_MAP_PATH"], map_location=device)
 
     # GET3D: Warm Up
-    total = settings.TORCH_WARM_UP_ITER
+    total = settings["TORCH_WARM_UP_ITER"]
     geo_z = torch.randn([1, generator_ema.z_dim], device=device)
     tex_z = torch.randn([1, generator_ema.z_dim], device=device)
     for _ in (
@@ -173,6 +171,7 @@ def construct_all():
     CAMERA = camera
     CLIP_LOSS_MODULE = clip_loss
     CLIP_MAP = clip_map
+    DEVICE = device
     CONSTRUCTED = True
 
 

@@ -4,7 +4,7 @@ import functools
 
 from .utils import inference_result
 
-ASSETS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
+ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
 
 
 @functools.lru_cache(maxsize=None)

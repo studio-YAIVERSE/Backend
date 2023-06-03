@@ -8,5 +8,6 @@ class MainConfig(AppConfig):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        from django.conf import settings
         from .pytorch import init
-        init()
+        init(settings.TORCH_SETTINGS)

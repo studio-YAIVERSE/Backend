@@ -11,30 +11,35 @@ import shutil as _shutil
 BASE_DIR = _pathlib.Path(__file__).resolve().parent.parent.parent
 
 
-# Python Ops
-
-EXTRA_PYTHON_PATH = []
-if _os.path.isdir(BASE_DIR / 'GET3D'):
-    EXTRA_PYTHON_PATH.append(BASE_DIR / 'GET3D')
-
-
 # Pytorch Ops
 
-TORCH_ENABLED = bool(int(_os.getenv("TORCH_ENABLED", 1)))  # 0 disables all torch operations
+TORCH_SETTINGS = {"BASE_DIR": BASE_DIR, "EXTRA_PYTHON_PATH": []}
 
-TORCH_LOG_LEVEL = int(_os.getenv("TORCH_LOG_LEVEL", 2))  # 0: silent, 1: call, 2: 1 + process, 3: 2 + nada output
+if _os.path.isdir(BASE_DIR / 'GET3D'):
+    TORCH_SETTINGS["EXTRA_PYTHON_PATH"].append(BASE_DIR / 'GET3D')
 
-TORCH_WARM_UP_ITER = int(_os.getenv("TORCH_WARM_UP_ITER", 10))
+TORCH_SETTINGS["TORCH_ENABLED"] = \
+    bool(int(_os.getenv("TORCH_ENABLED", 1)))  # 0 disables all torch operations
 
-TORCH_WITHOUT_CUSTOM_OPS_COMPILE = bool(int(_os.getenv("TORCH_WITHOUT_CUSTOM_OPS_COMPILE", 0)))  # without ninja
+TORCH_SETTINGS["TORCH_LOG_LEVEL"] = \
+    int(_os.getenv("TORCH_LOG_LEVEL", 2))  # 0: silent, 1: call, 2: 1 + process, 3: 2 + nada output
 
-TORCH_DEVICE = _os.getenv("TORCH_DEVICE", "cuda:0")
+TORCH_SETTINGS["TORCH_WARM_UP_ITER"] = \
+    int(_os.getenv("TORCH_WARM_UP_ITER", 10))
 
-NADA_WEIGHT_DIR = _os.getenv("NADA_WEIGHT_DIR", BASE_DIR / "weights/get3d_nada")
+TORCH_SETTINGS["TORCH_WITHOUT_CUSTOM_OPS_COMPILE"] = \
+    bool(int(_os.getenv("TORCH_WITHOUT_CUSTOM_OPS_COMPILE", 0)))  # without ninja
 
-CLIP_MAP_PATH = _os.getenv("CLIP_MAP_PATH", BASE_DIR / "weights/clip_map/checkpoint_group.pt")
+TORCH_SETTINGS["TORCH_DEVICE"] = \
+    _os.getenv("TORCH_DEVICE", "cuda:0")
 
-MODEL_OPTS = {  # Compatible with script arguments
+TORCH_SETTINGS["NADA_WEIGHT_DIR"] = \
+    _os.getenv("NADA_WEIGHT_DIR", BASE_DIR / "weights/get3d_nada")
+
+TORCH_SETTINGS["CLIP_MAP_PATH"] = \
+    _os.getenv("CLIP_MAP_PATH", BASE_DIR / "weights/clip_map/checkpoint_group.pt")
+
+TORCH_SETTINGS["MODEL_OPTS"] = {  # Compatible with script arguments
     'latent_dim': 512,
     'one_3d_generator': True,
     'deformation_multiplier': 1.,
@@ -55,9 +60,9 @@ MODEL_OPTS = {  # Compatible with script arguments
     'fp32': False
 }
 
-TORCH_SEED = 0
+TORCH_SETTINGS["TORCH_SEED"] = 0
 
-TORCH_RESOLUTION = 1024  # Image Resolution
+TORCH_SETTINGS["TORCH_RESOLUTION"] = 1024  # Image Resolution
 
 
 # Application definition

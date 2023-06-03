@@ -1,17 +1,21 @@
 import os
 import sys
 import functools
+import threading
+
+SETUP_LOCK = threading.Lock()
+SETUP_DONE = False
 
 
 def __setup_log(settings):
     from .utils import set_log_level
-    if hasattr(settings, "TORCH_LOG_LEVEL"):
-        set_log_level(settings.TORCH_LOG_LEVEL)
+    if "TORCH_LOG_LEVEL" in settings:
+        set_log_level(settings["TORCH_LOG_LEVEL"])
 
 
 def __setup_path(settings):
     from .utils import log_pytorch
-    for path in settings.EXTRA_PYTHON_PATH:
+    for path in settings["EXTRA_PYTHON_PATH"]:
         if os.path.isdir(path):
             if str(path) not in sys.path:
                 sys.path.append(str(path))
@@ -20,7 +24,7 @@ def __setup_path(settings):
 
 
 def __check_pytorch(settings):
-    if not settings.TORCH_ENABLED:
+    if not settings["TORCH_ENABLED"]:
         return
     try:
         import torch
@@ -34,11 +38,11 @@ def __check_pytorch(settings):
             )
         import warnings
         warnings.warn("Pytorch cuda runtime is not available, skipping pytorch ops...")
-        settings.TORCH_ENABLED = False
+        settings["TORCH_ENABLED"] = False
 
 
 def __setup_torch_mode(settings):
-    if not settings.TORCH_ENABLED:
+    if not settings["TORCH_ENABLED"]:
         return
     from .utils import log_pytorch
     log_pytorch("Initializing Pytorch", level=1)
@@ -53,12 +57,12 @@ def __setup_torch_mode(settings):
 
 
 def __setup_torch_extensions(settings):
-    if not settings.TORCH_ENABLED:
+    if not settings["TORCH_ENABLED"]:
         return
     from .utils import log_pytorch
     log_pytorch(
         "Initializing Pytorch Extensions: with{} compiling custom ops"
-        .format("out" * settings.TORCH_WITHOUT_CUSTOM_OPS_COMPILE), level=1
+        .format("out" * settings["TORCH_WITHOUT_CUSTOM_OPS_COMPILE"]), level=1
     )
     from torch_utils.ops import upfirdn2d
     from torch_utils.ops import bias_act
@@ -67,14 +71,14 @@ def __setup_torch_extensions(settings):
     from torch_utils.ops import conv2d_gradfix
     grid_sample_gradfix.enabled = True  # Avoids errors with the augmentation pipe.
     conv2d_gradfix.enabled = True  # Improves training speed.
-    if not settings.TORCH_WITHOUT_CUSTOM_OPS_COMPILE:
+    if not settings["TORCH_WITHOUT_CUSTOM_OPS_COMPILE"]:
         try:
             upfirdn2d._init()  # NOQA
             bias_act._init()  # NOQA
             filtered_lrelu._init()  # NOQA
         except RuntimeError:
-            settings.TORCH_WITHOUT_CUSTOM_OPS_COMPILE = True
-    if settings.TORCH_WITHOUT_CUSTOM_OPS_COMPILE:
+            settings["TORCH_WITHOUT_CUSTOM_OPS_COMPILE"] = True
+    if settings["TORCH_WITHOUT_CUSTOM_OPS_COMPILE"]:
         def fallback_ops(func):
             @functools.wraps(func)
             def wrapper(*args, impl=None, **kwargs):  # noqa
@@ -87,36 +91,39 @@ def __setup_torch_extensions(settings):
 
 
 def __setup_torch_device(settings):
-    if not settings.TORCH_ENABLED:
+    if not settings["TORCH_ENABLED"]:
         return
     from .utils import log_pytorch
-    log_pytorch("Initializing Pytorch Device with: {}".format(settings.TORCH_DEVICE), level=1)
+    log_pytorch("Initializing Pytorch Device with: {}".format(settings["TORCH_DEVICE"]), level=1)
     import torch
-    torch.cuda.set_device(settings.TORCH_DEVICE)
+    torch.cuda.set_device(settings["TORCH_DEVICE"])
     torch.cuda.empty_cache()
 
 
 def __setup_seed(settings):
-    if not settings.TORCH_ENABLED:
+    if not settings["TORCH_ENABLED"]:
         return
     from .utils import log_pytorch
-    log_pytorch("Initializing Pytorch Generator with seed: {}".format(settings.TORCH_SEED), level=1)
+    log_pytorch("Initializing Pytorch Generator with seed: {}".format(settings["TORCH_SEED"]), level=1)
     import numpy as np
     import torch
-    np.random.seed(settings.TORCH_SEED)
-    torch.manual_seed(settings.TORCH_SEED)
+    np.random.seed(settings["TORCH_SEED"])
+    torch.manual_seed(settings["TORCH_SEED"])
 
 
-@functools.lru_cache(maxsize=None)
-def setup():
-    from django.conf import settings
-    __setup_log(settings)
-    __setup_path(settings)
-    __check_pytorch(settings)
-    __setup_torch_mode(settings)
-    __setup_torch_extensions(settings)
-    __setup_torch_device(settings)
-    __setup_seed(settings)
+def setup(settings):
+    global SETUP_DONE
+    if not SETUP_DONE:
+        with SETUP_LOCK:
+            if not SETUP_DONE:
+                __setup_log(settings)
+                __setup_path(settings)
+                __check_pytorch(settings)
+                __setup_torch_mode(settings)
+                __setup_torch_extensions(settings)
+                __setup_torch_device(settings)
+                __setup_seed(settings)
+                SETUP_DONE = True
 
 
 # Encapsulation
